@@ -1,6 +1,6 @@
 import logoDark from "./logo-dark.svg";
 import logoLight from "./logo-light.svg";
-import {useGetWeatherQuery} from "../../apis/foosball/foosball";
+import {useGetWeatherQuery} from "../../../apis/foosball/foosball";
 
 export function Welcome() {
     const {data, error, isLoading} = useGetWeatherQuery()

@@ -4,3 +4,15 @@ export interface WeatherForecast {
     temperatureF: number;
     summary: string;
 }
+
+export interface Player {
+    id: number;
+    name: string;
+    elo: number;
+}
+
+export interface Match {
+    firstPlayerId: number;
+    secondPlayerId: number;
+    playerWonId: number;
+}

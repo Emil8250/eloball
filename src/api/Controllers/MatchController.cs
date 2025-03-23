@@ -7,27 +7,42 @@ namespace api.Controllers;
 [Route("api/[controller]")]
 public class MatchController(EloballContext context) : ControllerBase
 {
-    public record MatchRecord(int FirstPlayerId, int SecondPlayerId, int PlayerWonId);
+    public record MatchRecord(int PlayerId, int TeamId);
+
+    public record MatchRecordSubmit(MatchRecord[] Matches, int TeamWonId);
     [HttpPost(Name = "PostMatch")]
-    public async Task Post([FromBody] MatchRecord matchRecord)
+    public async Task Post([FromBody] MatchRecordSubmit matchRecordSubmit)
     {
         var newMatch = new Match()
         {
-            FirstPlayerId = matchRecord.FirstPlayerId,
-            SecondPlayerId = matchRecord.SecondPlayerId,
-            PlayerWonId = matchRecord.PlayerWonId
+            PlayerWonId = matchRecordSubmit.TeamWonId
         };
-        context.Matches.Add(newMatch);
+        var addedMatch = context.Matches.Add(newMatch);
+        await context.SaveChangesAsync();
         var match = new EloMatch();
-        var firstPlayer = context.Players.Single(x => x.Id == matchRecord.FirstPlayerId);
-        var secondPlayer = context.Players.Single(x => x.Id == matchRecord.SecondPlayerId);
-        var player1Identifier = match.AddPlayer(firstPlayer.Elo, firstPlayer.Id == matchRecord.PlayerWonId);
-        var player2Identifier = match.AddPlayer(secondPlayer.Elo, secondPlayer.Id == matchRecord.PlayerWonId);
+        List<(EloPlayerIdentifier eloPlayerIdentifier, int playerId)> eloPlayers = new();
+        List<Player> players = new();
+        foreach (var matchRecord in matchRecordSubmit.Matches)
+        {
+            var player = context.Players.Single(x => x.Id == matchRecord.PlayerId);
+            players.Add(player);
+            var playerIdentifier = match.AddPlayer(player.Elo, matchRecord.TeamId == matchRecordSubmit.TeamWonId);
+            eloPlayers.Add((playerIdentifier, player.Id));
+            context.PlayerMatches.Add(new PlayerMatch
+            {
+                MatchId = addedMatch.Entity.Id,
+                PlayerId = matchRecord.PlayerId,
+                Team = matchRecord.TeamId,
+            });
+        }
+
         var result = match.Calculate();
-        firstPlayer.Elo = result.GetRatingAfter(player1Identifier);
-        secondPlayer.Elo = result.GetRatingAfter(player2Identifier);
-        context.Players.Update(firstPlayer);
-        context.Players.Update(secondPlayer);
+        foreach (var player in players)
+        {
+            player.Elo = result.GetRatingAfter(eloPlayers.Single(x => x.playerId == player.Id).eloPlayerIdentifier);
+            context.Players.Update(player);
+        }
+
         await context.SaveChangesAsync();
     }
 }

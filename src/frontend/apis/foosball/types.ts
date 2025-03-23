@@ -12,7 +12,11 @@ export interface Player {
 }
 
 export interface Match {
-    firstPlayerId: number;
-    secondPlayerId: number;
-    playerWonId: number;
+    playerId: number;
+    teamId: number;
+}
+
+export interface SubmitMatch {
+    teamWonId: number;
+    matches: Match[];
 }

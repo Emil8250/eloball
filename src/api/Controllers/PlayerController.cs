@@ -10,8 +10,7 @@ public class PlayerController(EloballContext context) : ControllerBase
     [HttpGet(Name = "GetPlayers")]
     public IEnumerable<Player> Get()
     {
-        var players = context.Players.ToList();
-        players = context.Players
+        var players = context.Players
             .Include(p => p.PlayerMatches)
             .ThenInclude(pm => pm.Match)
             .ToList();

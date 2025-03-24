@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 
 namespace api.Controllers;
 
@@ -10,6 +11,10 @@ public class PlayerController(EloballContext context) : ControllerBase
     public IEnumerable<Player> Get()
     {
         var players = context.Players.ToList();
+        players = context.Players
+            .Include(p => p.PlayerMatches)
+            .ThenInclude(pm => pm.Match)
+            .ToList();
         return players;
     }
 }

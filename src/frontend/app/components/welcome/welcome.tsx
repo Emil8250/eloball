@@ -17,7 +17,7 @@ export function Welcome() {
                 <SubmitMatchButton/>
             </div>  
             <div className="flex-row">
-                {data?.map((player) => (
+                {data?.slice().sort((a, b) => b.elo - a.elo).map((player) => (
                     <PlayerCard key={player.id} player={player} />
                 ))}
             </div> 

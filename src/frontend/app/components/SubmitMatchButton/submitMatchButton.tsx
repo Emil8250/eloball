@@ -12,10 +12,11 @@ import { usePostMatchMutation } from "apis/foosball/foosball";
 import { useEffect, useState } from "react";
 import type { Match } from "apis/foosball/types";
 import usePlayerContext from "~/context/PlayerContext/usePlayerContext";
+import { toast } from "sonner";
 
 export function SubmitMatchButton() {
     const { players, addPlayer, removePlayer } = usePlayerContext();
-    const [postMatch, {isLoading: isPosting}] = usePostMatchMutation()
+    const [postMatch, {isLoading, isSuccess}] = usePostMatchMutation()
     useEffect(() => {
         console.log(players)
     }, [players])
@@ -33,6 +34,12 @@ export function SubmitMatchButton() {
             })
         }
     }
+    useEffect(() => {
+        if (isSuccess) {
+            toast("Match was posted!")
+        }
+    }, [isSuccess]);
+        
     return (
         <Card className="w-[350px] m-4">
             <CardHeader>

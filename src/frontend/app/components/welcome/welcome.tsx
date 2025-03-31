@@ -12,13 +12,15 @@ export function Welcome() {
     if (data)
         console.log(data);
     return (
-        <main className="flex flex-wrap justify-center gap-6 p-4 md:p-8">
-            {data?.map((player) => (
-                <PlayerCard key={player.id} player={player} className="w-full sm:w-1/2 lg:w-1/3 xl:w-1/4"/>
-            ))}
-            <div className="w-full flex justify-center mt-4">
+        <main className="flex flex-wrap gap-6 p-4 md:p-8 justify-around">
+                        <div className="flex-row">
                 <SubmitMatchButton/>
-            </div>
+            </div>  
+            <div className="flex-row">
+                {data?.map((player) => (
+                    <PlayerCard key={player.id} player={player} />
+                ))}
+            </div> 
         </main>
     );
 }

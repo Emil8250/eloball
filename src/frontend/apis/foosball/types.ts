@@ -11,6 +11,13 @@ export interface Player {
     elo: number;
 }
 
+export interface PlayerTeam {
+    player: Player;
+    team: number;
+}
+export interface PlayerProviderProps {
+    children: React.ReactNode;
+} 
 export interface Match {
     playerId: number;
     teamId: number;

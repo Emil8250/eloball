@@ -1,0 +1,52 @@
+CREATE TABLE [dbo].[match](
+	[id] [int] IDENTITY(1,1) NOT NULL,
+	[playerWonId] [int] NOT NULL,
+ CONSTRAINT [PK_match] PRIMARY KEY CLUSTERED 
+(
+	[id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[player]    Script Date: 31/03/2025 22.41.31 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[player](
+	[id] [int] IDENTITY(1,1) NOT NULL,
+	[name] [nvarchar](max) NOT NULL,
+	[elo] [int] NOT NULL,
+ CONSTRAINT [PK_user] PRIMARY KEY CLUSTERED 
+(
+	[id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY] TEXTIMAGE_ON [PRIMARY]
+GO
+/****** Object:  Table [dbo].[playerMatch]    Script Date: 31/03/2025 22.41.31 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+CREATE TABLE [dbo].[playerMatch](
+	[id] [int] IDENTITY(1,1) NOT NULL,
+	[matchId] [int] NOT NULL,
+	[playerId] [int] NOT NULL,
+	[team] [int] NOT NULL,
+ CONSTRAINT [PK_playerMatch] PRIMARY KEY CLUSTERED 
+(
+	[id] ASC
+)WITH (PAD_INDEX = OFF, STATISTICS_NORECOMPUTE = OFF, IGNORE_DUP_KEY = OFF, ALLOW_ROW_LOCKS = ON, ALLOW_PAGE_LOCKS = ON, OPTIMIZE_FOR_SEQUENTIAL_KEY = OFF) ON [PRIMARY]
+) ON [PRIMARY]
+GO
+ALTER TABLE [dbo].[player] ADD  CONSTRAINT [DF_user_elo]  DEFAULT ((1000)) FOR [elo]
+GO
+ALTER TABLE [dbo].[playerMatch]  WITH CHECK ADD  CONSTRAINT [FK_playerMatch_match] FOREIGN KEY([matchId])
+REFERENCES [dbo].[match] ([id])
+GO
+ALTER TABLE [dbo].[playerMatch] CHECK CONSTRAINT [FK_playerMatch_match]
+GO
+ALTER TABLE [dbo].[playerMatch]  WITH CHECK ADD  CONSTRAINT [FK_playerMatch_player] FOREIGN KEY([playerId])
+REFERENCES [dbo].[player] ([id])
+GO
+ALTER TABLE [dbo].[playerMatch] CHECK CONSTRAINT [FK_playerMatch_player]
+GO

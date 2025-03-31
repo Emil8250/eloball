@@ -9,22 +9,23 @@ import {
 import {Button} from "~/components/ui/button";
 import {Input} from "~/components/ui/input";
 import { usePostMatchMutation } from "apis/foosball/foosball";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { Match } from "apis/foosball/types";
+import usePlayerContext from "~/context/PlayerContext/usePlayerContext";
 
 export function SubmitMatchButton() {
+    const { players, addPlayer, removePlayer } = usePlayerContext();
     const [postMatch, {isLoading: isPosting}] = usePostMatchMutation()
-    const [matches, setMatches] = useState<Match[]>([
-        { playerId: 0, teamId: 1 },
-        { playerId: 0, teamId: 1 },
-        { playerId: 0, teamId: 2 },
-        { playerId: 0, teamId: 2 }
-    ]);
-    const [teamWonId, setTeamWonId] = useState<number>();
+    useEffect(() => {
+        console.log(players)
+    }, [players])
 
-    const handleSubmit = () => {
+    const handleSubmit = (teamWonId: number) => {
         // Filter out any entries with playerId = 0 (our placeholder value)
-        const validMatches = matches.filter(m => m.playerId !== 0);
+        let validMatches: Match[] = [];
+        players.map(player => {
+            validMatches.push({playerId: player.player.id, teamId: player.team})
+        })
         if (validMatches.length >= 2 && teamWonId) {
             postMatch({
                 matches: validMatches,
@@ -32,17 +33,6 @@ export function SubmitMatchButton() {
             })
         }
     }
-
-    const updatePlayerId = (index: number, playerId: number) => {
-        setMatches(currentMatches => {
-            const newMatches = [...currentMatches];
-            newMatches[index] = { 
-                playerId: playerId,
-                teamId: index < 2 ? 1 : 2  // First two players are team 1, others team 2
-            };
-            return newMatches;
-        });
-    };
     return (
         <Card className="w-[350px] m-4">
             <CardHeader>
@@ -50,48 +40,17 @@ export function SubmitMatchButton() {
                 <CardDescription>Add up to 4 players (2 per team) and select winning team</CardDescription>
             </CardHeader>
             <CardContent>
-                <div className="mb-4">
-                    <h3 className="text-sm font-medium mb-2">Team 1</h3>
-                    <Input
-                        className="mb-1"
-                        type="number"
-                        placeholder="Player 1 ID"
-                        onChange={(e) => updatePlayerId(0, Number(e.target.value))}
-                    />
-                    <Input
-                        className="mb-1"
-                        type="number"
-                        placeholder="Player 2 ID (optional)"
-                        onChange={(e) => updatePlayerId(1, Number(e.target.value))}
-                    />
-                </div>
-                <div className="mb-4">
-                    <h3 className="text-sm font-medium mb-2">Team 2</h3>
-                    <Input
-                        className="mb-1"
-                        type="number"
-                        placeholder="Player 3 ID"
-                        onChange={(e) => updatePlayerId(2, Number(e.target.value))}
-                    />
-                    <Input
-                        className="mb-1"
-                        type="number"
-                        placeholder="Player 4 ID (optional)"
-                        onChange={(e) => updatePlayerId(3, Number(e.target.value))}
-                    />
-                </div>
-                <div className="mb-4">
-                    <h3 className="text-sm font-medium mb-2">Winning Team</h3>
-                    <Input
-                        className="mb-1"
-                        type="number"
-                        placeholder="Team Won ID (1 or 2)"
-                        onChange={(e) => setTeamWonId(Number(e.target.value))}
-                    />
-                </div>
+                    {players.slice().sort((a, b) => a.team - b.team).map((player) => (
+                        <>
+                            <span>{player.player.name} - Team: {player.team}</span>
+                            <button className="ml-4" onClick={() => removePlayer(player.player.id)}>[Remove]</button>
+                            <br />
+                        </>
+                    ))}
             </CardContent>
             <CardFooter className="flex justify-between">
-                <Button type="button" onClick={handleSubmit}>Submit Match</Button>
+                <button onClick={() => handleSubmit(1)}>Team 1 Won!</button>
+                <button onClick={() => handleSubmit(2)}>Team 2 Won!</button>
             </CardFooter>
         </Card>
     );

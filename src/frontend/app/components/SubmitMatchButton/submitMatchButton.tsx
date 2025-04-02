@@ -8,7 +8,7 @@ import {
 } from "~/components/ui/card"
 import {Button} from "~/components/ui/button";
 import { usePostMatchMutation } from "apis/foosball/foosball";
-import { useEffect, useState } from "react";
+import {useCallback, useEffect, useState} from "react";
 import type { Match } from "apis/foosball/types";
 import usePlayerContext from "~/context/PlayerContext/usePlayerContext";
 import { toast } from "sonner";
@@ -34,6 +34,34 @@ export function SubmitMatchButton() {
             });
         }
     };
+    
+    const CallibrateTeams = useCallback(() => {
+        const maxEloPlayer = players.reduce(function(prev, current) {
+            return (prev && prev.player.elo > current.player.elo) ? prev : current
+        });
+
+        const minEloPlayer = players.reduce(function(prev, current) {
+            return (prev && prev.player.elo < current.player.elo) ? prev : current
+        });
+
+        const remainingPlayers = players.filter(x => x.player.id !== maxEloPlayer.player.id && x.player.id !== minEloPlayer.player.id);
+        
+        removePlayer(maxEloPlayer.player.id);
+        removePlayer(minEloPlayer.player.id);
+        removePlayer(remainingPlayers[0].player.id);
+        removePlayer(remainingPlayers[1].player.id);
+        
+        maxEloPlayer.team = 1;
+        minEloPlayer.team = 1;
+        
+        remainingPlayers[0].team = 2;
+        remainingPlayers[1].team = 2;
+
+        addPlayer(maxEloPlayer);
+        addPlayer(minEloPlayer);
+        addPlayer(remainingPlayers[0]);
+        addPlayer(remainingPlayers[1]);
+    }, [players, removePlayer, addPlayer]);
     
     useEffect(() => {
         if (isSuccess) {
@@ -142,6 +170,13 @@ export function SubmitMatchButton() {
             
             {/* Updated footer to keep buttons inside the card properly */}
             <CardFooter className="px-6 pb-6 flex justify-center flex-wrap gap-4">
+                <Button
+                    className="bg-fuchsia-500 hover:bg-fuchsia-600 text-white font-medium rounded-full px-6 py-3 min-w-[120px]"
+                    onClick={CallibrateTeams}
+                    disabled={team1Players.length === 0 || team2Players.length === 0}
+                >
+                    Calibrate Teams
+                </Button>
                 <Button 
                     className="bg-red-500 hover:bg-red-600 text-white font-medium rounded-full px-6 py-3 min-w-[120px]"
                     onClick={() => handleSubmit(1)}

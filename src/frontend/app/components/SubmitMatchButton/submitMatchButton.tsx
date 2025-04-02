@@ -173,7 +173,7 @@ export function SubmitMatchButton() {
                 <Button
                     className="bg-fuchsia-500 hover:bg-fuchsia-600 text-white font-medium rounded-full px-6 py-3 min-w-[120px]"
                     onClick={CallibrateTeams}
-                    disabled={team1Players.length === 0 || team2Players.length === 0}
+                    disabled={players.length !== 4}
                 >
                     Calibrate Teams
                 </Button>

@@ -38,15 +38,25 @@ export function Welcome() {
         : [];
 
     return (
-        <div className="min-h-screen flex flex-col bg-gray-50">
+        <div className="min-h-screen flex flex-col bg-gray-50 dark:bg-gray-900 dark:text-gray-200">
             {/* Header with Logo */}
-            <header className="bg-white shadow-md py-2">
+            <header className="bg-white dark:bg-[#252525] shadow-md py-2">
                 <div className="container mx-auto px-4 flex items-center justify-between">
                     <div className="flex items-center">
-                        <img src="/logo.png" alt="Logo" className="h-20 w-auto" />
+                        {/* Use different logo based on dark/light mode */}
+                        <img 
+                            src="/logo.png" 
+                            alt="Logo" 
+                            className="h-20 w-auto block dark:hidden" 
+                        />
+                        <img 
+                            src="/logo-dark.png" 
+                            alt="Logo" 
+                            className="h-20 w-auto hidden dark:block" 
+                        />
                     </div>
                     
-                    <div className="text-gray-500">
+                    <div className="text-gray-500 dark:text-gray-300">
                         {!isLoading && data && (
                             <span>{data.length} Players</span>
                         )}
@@ -54,12 +64,13 @@ export function Welcome() {
                 </div>
             </header>
 
+
             {/* Main Content */}
             <PlayerProvider>
                 <main className="flex-grow container mx-auto py-8 px-4">
                     {isLoading ? (
                         <div className="flex justify-center items-center h-64">
-                            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
+                            <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 dark:border-blue-400"></div>
                         </div>
                     ) : (
                         <div className="flex flex-col items-center lg:items-start lg:flex-row gap-8">
@@ -88,7 +99,7 @@ export function Welcome() {
             </PlayerProvider>
 
             {/* Footer */}
-            <footer className="bg-gray-800 text-white py-6">
+            <footer className="bg-gray-800 dark:bg-gray-950 text-white py-6">
                 <div className="container mx-auto px-4">
                     <div className="flex flex-col md:flex-row justify-between items-center">
                         <div className="mb-4 md:mb-0">
@@ -96,7 +107,7 @@ export function Welcome() {
                         </div>
                         <div className="flex items-center">
                             <span className="text-gray-400 text-sm">Powered by</span>
-                            <div className="ml-2 bg-gray-700 rounded-md px-3 py-1 flex items-center">
+                            <div className="ml-2 bg-gray-700 dark:bg-gray-800 rounded-md px-3 py-1 flex items-center">
                                 <span className="font-mono font-bold text-blue-400">EI</span>
                                 <span className="mx-1 text-gray-500">-</span>
                                 <span className="font-medium text-gray-300">Emil Intelligence</span>

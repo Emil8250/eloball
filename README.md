@@ -1,34 +1,68 @@
-# ELO Ball
+# Eloball
 
-ELO Ball is a web application designed to help manage and organize competitive matches between players with different skill levels. It uses the ELO rating system to track player performance and suggests fair matchups based on player handicaps.
+Eloball is a foosball (table football) ELO rating tracker. Players record 1v1 and 2v2 match results, and the system updates ELO ratings accordingly. Organized into seasons — each season resets ELO to 1000 and archives the final standings.
+
+## Tech Stack
+
+**Frontend** — React 19, React Router v7 (SPA mode), TypeScript, Tailwind CSS v4, Redux Toolkit / RTK Query, Recharts, shadcn/ui
+
+**Backend** — .NET 8 Web API, hosted at `api.billigeterninger.dk`
 
 ## Features
 
-- **User Management**
-  - Add and manage players
-  - Track individual player statistics
-  - View player profiles and history
+- **Leaderboard** — Live player rankings sorted by ELO with win/loss records
+- **Match Recording** — Drag players onto Team 1 / Team 2, supports 1v1 and 2v2
+- **Seasons** — Start/end seasons, which snapshot player stats (W/L, final ELO) and reset ratings to 1000
+- **Season History** — Browse past seasons with full leaderboards and an ELO-over-seasons chart
+- **Dark Mode** — Follows system preference automatically
 
-- **Match Management**
-  - Record match results
-  - Calculate and update ELO ratings
-  - Track match history
+## Project Structure
 
-- **Smart Matchmaking**
-  - Suggest fair matchups based on player ratings
-  - Account for player handicaps
-  - Help organize balanced games
+```
+src/
+├── api/                          # .NET 8 backend
+│   ├── Controllers/
+│   │   ├── PlayerController.cs
+│   │   ├── MatchController.cs
+│   │   └── SeasonController.cs
+│   └── Program.cs
+└── frontend/                     # React SPA
+    ├── apis/foosball/            # RTK Query API + types
+    ├── app/
+    │   ├── root.tsx              # Layout, nav, providers
+    │   └── routes/
+    │       ├── leaderboard.tsx   # / — player rankings
+    │       ├── game.tsx          # /game — match setup
+    │       ├── seasons.tsx       # /seasons — season list + chart
+    │       └── season-detail.tsx # /seasons/:id — season leaderboard
+    ├── components/ui/            # shadcn/ui components
+    ├── mocks/data.ts             # Mock data (append ?mock to URL)
+    └── index.css                 # Tailwind + CSS variables
+```
 
-- **Statistics and Analytics**
-  - View player rankings
-  - Track win/loss records
-  - Monitor rating changes over time
+## API Endpoints
 
-## Contributing
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/player` | All players with current ELO |
+| POST | `/api/match` | Record a match result |
+| GET | `/api/season` | All seasons (newest first) |
+| GET | `/api/season/active` | Current active season |
+| GET | `/api/season/{id}/leaderboard` | Season standings |
+| POST | `/api/season/{id}/end` | End season (snapshots stats, resets ELO) |
+| POST | `/api/season` | Create new season |
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+## Development
+
+```bash
+cd src/frontend
+npm install
+npm run dev
+```
+
+Add `?mock` to the URL to use mock data instead of the live API.
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+MIT
   

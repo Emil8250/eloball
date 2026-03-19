@@ -128,9 +128,10 @@ export default function Leaderboard() {
           {(() => {
             const entry = leaderboard[1];
             return (
-              <div
+              <Link
+                to={`/stats?player=${entry.playerId}`}
                 key={entry.playerId}
-                className={`flex flex-col items-center p-3 rounded-2xl border-2 bg-gradient-to-b ${podiumColors[1]} animate-slide-up w-28 sm:w-32`}
+                className={`flex flex-col items-center p-3 rounded-2xl border-2 bg-gradient-to-b ${podiumColors[1]} animate-slide-up w-28 sm:w-32 cursor-pointer hover:scale-105 transition-transform`}
                 style={{ animationDelay: "100ms" }}
               >
                 <span className="text-2xl mb-1">{medals[1]}</span>
@@ -143,16 +144,17 @@ export default function Leaderboard() {
                     {entry.matchesWon}W/{entry.matchesPlayed - entry.matchesWon}L
                   </div>
                 )}
-              </div>
+              </Link>
             );
           })()}
           {/* 1st place — taller */}
           {(() => {
             const entry = leaderboard[0];
             return (
-              <div
+              <Link
+                to={`/stats?player=${entry.playerId}`}
                 key={entry.playerId}
-                className={`flex flex-col items-center p-4 rounded-2xl border-2 bg-gradient-to-b ${podiumColors[0]} animate-slide-up w-32 sm:w-36 -mt-4`}
+                className={`flex flex-col items-center p-4 rounded-2xl border-2 bg-gradient-to-b ${podiumColors[0]} animate-slide-up w-32 sm:w-36 -mt-4 cursor-pointer hover:scale-105 transition-transform`}
                 style={{ animationDelay: "0ms" }}
               >
                 <span className="text-3xl mb-1">{medals[0]}</span>
@@ -166,16 +168,17 @@ export default function Leaderboard() {
                     <span className="font-semibold">{Math.round(entry.winRate * 100)}%</span>
                   </div>
                 )}
-              </div>
+              </Link>
             );
           })()}
           {/* 3rd place */}
           {(() => {
             const entry = leaderboard[2];
             return (
-              <div
+              <Link
+                to={`/stats?player=${entry.playerId}`}
                 key={entry.playerId}
-                className={`flex flex-col items-center p-3 rounded-2xl border-2 bg-gradient-to-b ${podiumColors[2]} animate-slide-up w-28 sm:w-32`}
+                className={`flex flex-col items-center p-3 rounded-2xl border-2 bg-gradient-to-b ${podiumColors[2]} animate-slide-up w-28 sm:w-32 cursor-pointer hover:scale-105 transition-transform`}
                 style={{ animationDelay: "200ms" }}
               >
                 <span className="text-2xl mb-1">{medals[2]}</span>
@@ -188,7 +191,7 @@ export default function Leaderboard() {
                     {entry.matchesWon}W/{entry.matchesPlayed - entry.matchesWon}L
                   </div>
                 )}
-              </div>
+              </Link>
             );
           })()}
         </div>
@@ -198,9 +201,10 @@ export default function Leaderboard() {
       {leaderboard && leaderboard.length > 3 && (
         <div className="space-y-2">
           {leaderboard.slice(3).map((entry, i) => (
-            <div
+            <Link
+              to={`/stats?player=${entry.playerId}`}
               key={entry.playerId}
-              className="flex items-center gap-4 bg-card rounded-xl px-4 py-3 border border-border/50 animate-slide-up hover:border-primary/30 transition-colors"
+              className="flex items-center gap-4 bg-card rounded-xl px-4 py-3 border border-border/50 animate-slide-up hover:border-primary/30 transition-colors cursor-pointer"
               style={{ animationDelay: `${(i + 3) * 60}ms` }}
             >
               <span className="text-sm font-bold text-muted-foreground w-6 text-center tabular-nums">
@@ -218,7 +222,7 @@ export default function Leaderboard() {
               <div className="text-right">
                 <p className="text-lg font-extrabold tabular-nums">{entry.finalElo ?? entry.startingElo}</p>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       )}

@@ -5,4 +5,5 @@ export default [
     route("seasons", "routes/seasons.tsx"),
     route("seasons/:id", "routes/season-detail.tsx"),
     route("game", "routes/game.tsx"),
+    route("stats", "routes/stats.tsx"),
 ] satisfies RouteConfig;

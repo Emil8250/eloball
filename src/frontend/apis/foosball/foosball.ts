@@ -1,6 +1,6 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react'
 import type { BaseQueryFn, FetchArgs, FetchBaseQueryError } from '@reduxjs/toolkit/query'
-import type { LeaderboardEntry, Player, Season, SubmitMatch } from "./types";
+import type { LeaderboardEntry, Player, PlayerMatchRecord, Season, SubmitMatch } from "./types";
 import { getMockResponse } from '../../mocks/data'
 
 const realBaseQuery = fetchBaseQuery({ baseUrl: 'https://api.billigeterninger.dk/api/' })
@@ -50,6 +50,10 @@ export const foosballApi = createApi({
             query: (id) => `season/${id}/leaderboard`,
             providesTags: ["season"]
         }),
+        getPlayerMatches: builder.query<PlayerMatchRecord[], void>({
+            query: () => 'player/playerMatches',
+            providesTags: ["match"]
+        }),
         endSeason: builder.mutation<Season, number>({
             query: (id) => ({ url: `season/${id}/end`, method: 'POST' }),
             invalidatesTags: ["season", "match"]
@@ -68,6 +72,7 @@ export const {
     useGetActiveSeasonQuery,
     useGetSeasonQuery,
     useGetSeasonLeaderboardQuery,
+    useGetPlayerMatchesQuery,
     useEndSeasonMutation,
     useCreateSeasonMutation,
 } = foosballApi

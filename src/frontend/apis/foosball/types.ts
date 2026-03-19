@@ -24,6 +24,23 @@ export interface SubmitMatch {
     matches: Match[];
 }
 
+export interface MatchInfo {
+    id: number;
+    playerWonId: number;
+    createdDateTime: string;
+    egg: boolean;
+    seasonId: number | null;
+}
+
+export interface PlayerMatchRecord {
+    id: number;
+    matchId: number;
+    playerId: number;
+    team: number;
+    player: Player;
+    match: MatchInfo;
+}
+
 export interface Season {
     id: number;
     name: string;

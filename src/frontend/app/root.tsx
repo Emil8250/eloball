@@ -13,7 +13,7 @@ import "../index.css";
 import { store } from '~/store'
 import { Provider } from "react-redux";
 import { Toaster } from "sonner";
-import { Trophy, Calendar, Swords } from "lucide-react";
+import { Trophy, Calendar, Swords, BarChart3 } from "lucide-react";
 import PlayerProvider from "~/context/PlayerContext/PlayerProvider";
 
 export const links: Route.LinksFunction = () => [
@@ -33,6 +33,7 @@ const navItems = [
   { to: "/", label: "Leaderboard", icon: Trophy, activeBg: "bg-amber-500 text-white shadow-md", activeMobile: "bg-amber-500 text-white shadow-sm" },
   { to: "/game", label: "Play", icon: Swords, activeBg: "bg-orange-500 text-white shadow-md", activeMobile: "bg-orange-500 text-white shadow-sm" },
   { to: "/seasons", label: "Seasons", icon: Calendar, activeBg: "bg-emerald-500 text-white shadow-md", activeMobile: "bg-emerald-500 text-white shadow-sm" },
+  { to: "/stats", label: "Stats", icon: BarChart3, activeBg: "bg-violet-500 text-white shadow-md", activeMobile: "bg-violet-500 text-white shadow-sm" },
 ];
 
 export function Layout({ children }: { children: React.ReactNode }) {

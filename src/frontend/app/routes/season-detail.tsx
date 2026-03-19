@@ -1,5 +1,5 @@
 import { useParams, Link } from "react-router";
-import { useGetSeasonQuery, useGetSeasonLeaderboardQuery, useGetPlayersQuery } from "../../apis/foosball/foosball";
+import { useGetSeasonQuery, useGetSeasonLeaderboardQuery, useGetPlayersQuery, useGetPlayerMatchesQuery } from "../../apis/foosball/foosball";
 import type { LeaderboardEntry } from "../../apis/foosball/types";
 import { ArrowLeft, Calendar, Gamepad2, Trophy } from "lucide-react";
 
@@ -19,6 +19,7 @@ export default function SeasonDetail() {
   const { data: players, isLoading: playersLoading } = useGetPlayersQuery(undefined, {
     skip: !season?.isActive,
   });
+  const { data: allPlayerMatches } = useGetPlayerMatchesQuery();
 
   const isLoading = seasonLoading || lbLoading || playersLoading;
 
@@ -59,6 +60,39 @@ export default function SeasonDetail() {
     : "Present";
 
   const totalMatches = leaderboard ? Math.round(leaderboard.reduce((sum, e) => sum + e.matchesPlayed, 0) / 2) : 0;
+
+  // Group playerMatches by matchId for this season, then take latest 15, grouped by date
+  const matchesByDate = (() => {
+    if (!allPlayerMatches) return [];
+    const forSeason = allPlayerMatches.filter(pm => pm.match.seasonId === seasonId);
+    const grouped: Record<number, typeof forSeason> = {};
+    for (const pm of forSeason) {
+      (grouped[pm.matchId] ??= []).push(pm);
+    }
+    const matches = Object.values(grouped)
+      .map(pms => ({
+        id: pms[0].matchId,
+        playerWonId: pms[0].match.playerWonId,
+        createdDateTime: pms[0].match.createdDateTime,
+        players: pms,
+      }))
+      .sort((a, b) => new Date(b.createdDateTime).getTime() - new Date(a.createdDateTime).getTime())
+      .slice(0, 15);
+
+    const byDate: { date: string; matches: typeof matches }[] = [];
+    for (const match of matches) {
+      const dateKey = new Date(match.createdDateTime).toLocaleDateString("en-GB", {
+        day: "numeric", month: "short", year: "numeric",
+      });
+      const last = byDate[byDate.length - 1];
+      if (last?.date === dateKey) {
+        last.matches.push(match);
+      } else {
+        byDate.push({ date: dateKey, matches: [match] });
+      }
+    }
+    return byDate;
+  })();
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
@@ -142,6 +176,57 @@ export default function SeasonDetail() {
                 </div>
               );
             })}
+          </div>
+        </div>
+      )}
+
+      {/* Recent Matches */}
+      {matchesByDate.length > 0 && (
+        <div className="mt-6">
+          <div className="px-1 mb-3">
+            <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wide">Recent Matches</h2>
+          </div>
+          <div className="space-y-4">
+            {matchesByDate.map(group => (
+              <div key={group.date}>
+                <p className="text-xs font-semibold text-muted-foreground mb-2 px-1">{group.date}</p>
+                <div className="bg-card rounded-2xl border border-border/50 overflow-hidden divide-y divide-border/30">
+                  {group.matches.map((match, i) => {
+                    const team1 = match.players.filter(pm => pm.team === 1);
+                    const team2 = match.players.filter(pm => pm.team === 2);
+                    const winningTeam = match.playerWonId;
+
+                    return (
+                      <div
+                        key={match.id}
+                        className="px-4 py-3 animate-slide-up"
+                        style={{ animationDelay: `${i * 40}ms` }}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`flex-1 text-right ${winningTeam === 1 ? "font-bold" : "text-muted-foreground"}`}>
+                            <p className="text-sm flex items-center justify-end gap-1.5">
+                              {winningTeam === 1 && <Trophy size={12} className="text-amber-500 shrink-0" />}
+                              {team1.map(pm => pm.player.name).join(" & ")}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <span className={`w-2 h-2 rounded-full ${winningTeam === 1 ? "bg-team-red" : "bg-team-red/30"}`} />
+                            <span className="text-xs text-muted-foreground font-bold">vs</span>
+                            <span className={`w-2 h-2 rounded-full ${winningTeam === 2 ? "bg-team-blue" : "bg-team-blue/30"}`} />
+                          </div>
+                          <div className={`flex-1 ${winningTeam === 2 ? "font-bold" : "text-muted-foreground"}`}>
+                            <p className="text-sm flex items-center gap-1.5">
+                              {team2.map(pm => pm.player.name).join(" & ")}
+                              {winningTeam === 2 && <Trophy size={12} className="text-amber-500 shrink-0" />}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}

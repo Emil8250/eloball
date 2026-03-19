@@ -1,4 +1,4 @@
-import { useGetActiveSeasonQuery, useGetSeasonLeaderboardQuery, useGetPlayersQuery } from "../../apis/foosball/foosball";
+import { useGetActiveSeasonQuery, useGetSeasonLeaderboardQuery, useGetPlayersQuery, useGetPlayerMatchesQuery } from "../../apis/foosball/foosball";
 import type { LeaderboardEntry } from "../../apis/foosball/types";
 import { Link } from "react-router";
 import { Swords, TrendingUp, Trophy, Gamepad2 } from "lucide-react";
@@ -21,6 +21,7 @@ export default function Leaderboard() {
     season?.id ?? 0,
     { skip: !season?.id || season?.isActive }
   );
+  const { data: allPlayerMatches } = useGetPlayerMatchesQuery();
 
   const isLoading = seasonLoading || playersLoading || lbLoading;
 
@@ -62,6 +63,39 @@ export default function Leaderboard() {
     );
   }
 
+  // Group playerMatches by matchId for this season, then take latest 15
+  const matchesByDate = (() => {
+    if (!allPlayerMatches || !season) return [];
+    const forSeason = allPlayerMatches.filter(pm => pm.match.seasonId === season.id);
+    const grouped: Record<number, typeof forSeason> = {};
+    for (const pm of forSeason) {
+      (grouped[pm.matchId] ??= []).push(pm);
+    }
+    const matches = Object.values(grouped)
+      .map(pms => ({
+        id: pms[0].matchId,
+        playerWonId: pms[0].match.playerWonId,
+        createdDateTime: pms[0].match.createdDateTime,
+        players: pms,
+      }))
+      .sort((a, b) => new Date(b.createdDateTime).getTime() - new Date(a.createdDateTime).getTime())
+      .slice(0, 15);
+
+    const byDate: { date: string; matches: typeof matches }[] = [];
+    for (const match of matches) {
+      const dateKey = new Date(match.createdDateTime).toLocaleDateString("en-GB", {
+        day: "numeric", month: "short", year: "numeric",
+      });
+      const last = byDate[byDate.length - 1];
+      if (last?.date === dateKey) {
+        last.matches.push(match);
+      } else {
+        byDate.push({ date: dateKey, matches: [match] });
+      }
+    }
+    return byDate;
+  })();
+
   const matchCount = season.isActive
     ? Math.floor((season as any).matches?.length ?? 0)
     : Math.floor((leaderboard?.reduce((sum, e) => sum + e.matchesPlayed, 0) ?? 0) / 2);
@@ -94,9 +128,10 @@ export default function Leaderboard() {
           {(() => {
             const entry = leaderboard[1];
             return (
-              <div
+              <Link
+                to={`/stats?player=${entry.playerId}`}
                 key={entry.playerId}
-                className={`flex flex-col items-center p-3 rounded-2xl border-2 bg-gradient-to-b ${podiumColors[1]} animate-slide-up w-28 sm:w-32`}
+                className={`flex flex-col items-center p-3 rounded-2xl border-2 bg-gradient-to-b ${podiumColors[1]} animate-slide-up w-28 sm:w-32 cursor-pointer hover:scale-105 transition-transform`}
                 style={{ animationDelay: "100ms" }}
               >
                 <span className="text-2xl mb-1">{medals[1]}</span>
@@ -109,16 +144,17 @@ export default function Leaderboard() {
                     {entry.matchesWon}W/{entry.matchesPlayed - entry.matchesWon}L
                   </div>
                 )}
-              </div>
+              </Link>
             );
           })()}
           {/* 1st place — taller */}
           {(() => {
             const entry = leaderboard[0];
             return (
-              <div
+              <Link
+                to={`/stats?player=${entry.playerId}`}
                 key={entry.playerId}
-                className={`flex flex-col items-center p-4 rounded-2xl border-2 bg-gradient-to-b ${podiumColors[0]} animate-slide-up w-32 sm:w-36 -mt-4`}
+                className={`flex flex-col items-center p-4 rounded-2xl border-2 bg-gradient-to-b ${podiumColors[0]} animate-slide-up w-32 sm:w-36 -mt-4 cursor-pointer hover:scale-105 transition-transform`}
                 style={{ animationDelay: "0ms" }}
               >
                 <span className="text-3xl mb-1">{medals[0]}</span>
@@ -132,16 +168,17 @@ export default function Leaderboard() {
                     <span className="font-semibold">{Math.round(entry.winRate * 100)}%</span>
                   </div>
                 )}
-              </div>
+              </Link>
             );
           })()}
           {/* 3rd place */}
           {(() => {
             const entry = leaderboard[2];
             return (
-              <div
+              <Link
+                to={`/stats?player=${entry.playerId}`}
                 key={entry.playerId}
-                className={`flex flex-col items-center p-3 rounded-2xl border-2 bg-gradient-to-b ${podiumColors[2]} animate-slide-up w-28 sm:w-32`}
+                className={`flex flex-col items-center p-3 rounded-2xl border-2 bg-gradient-to-b ${podiumColors[2]} animate-slide-up w-28 sm:w-32 cursor-pointer hover:scale-105 transition-transform`}
                 style={{ animationDelay: "200ms" }}
               >
                 <span className="text-2xl mb-1">{medals[2]}</span>
@@ -154,7 +191,7 @@ export default function Leaderboard() {
                     {entry.matchesWon}W/{entry.matchesPlayed - entry.matchesWon}L
                   </div>
                 )}
-              </div>
+              </Link>
             );
           })()}
         </div>
@@ -164,9 +201,10 @@ export default function Leaderboard() {
       {leaderboard && leaderboard.length > 3 && (
         <div className="space-y-2">
           {leaderboard.slice(3).map((entry, i) => (
-            <div
+            <Link
+              to={`/stats?player=${entry.playerId}`}
               key={entry.playerId}
-              className="flex items-center gap-4 bg-card rounded-xl px-4 py-3 border border-border/50 animate-slide-up hover:border-primary/30 transition-colors"
+              className="flex items-center gap-4 bg-card rounded-xl px-4 py-3 border border-border/50 animate-slide-up hover:border-primary/30 transition-colors cursor-pointer"
               style={{ animationDelay: `${(i + 3) * 60}ms` }}
             >
               <span className="text-sm font-bold text-muted-foreground w-6 text-center tabular-nums">
@@ -184,7 +222,7 @@ export default function Leaderboard() {
               <div className="text-right">
                 <p className="text-lg font-extrabold tabular-nums">{entry.finalElo ?? entry.startingElo}</p>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       )}
@@ -195,6 +233,57 @@ export default function Leaderboard() {
           <Gamepad2 size={48} className="mx-auto mb-3 opacity-50" />
           <p className="font-semibold">No matches yet this season</p>
           <p className="text-sm mt-1">Start a game to see rankings!</p>
+        </div>
+      )}
+
+      {/* Recent Matches */}
+      {matchesByDate.length > 0 && (
+        <div className="mt-6">
+          <div className="px-1 mb-3">
+            <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wide">Recent Matches</h2>
+          </div>
+          <div className="space-y-4">
+            {matchesByDate.map(group => (
+              <div key={group.date}>
+                <p className="text-xs font-semibold text-muted-foreground mb-2 px-1">{group.date}</p>
+                <div className="bg-card rounded-2xl border border-border/50 overflow-hidden divide-y divide-border/30">
+                  {group.matches.map((match, i) => {
+                    const team1 = match.players.filter(pm => pm.team === 1);
+                    const team2 = match.players.filter(pm => pm.team === 2);
+                    const winningTeam = match.playerWonId;
+
+                    return (
+                      <div
+                        key={match.id}
+                        className="px-4 py-3 animate-slide-up"
+                        style={{ animationDelay: `${i * 40}ms` }}
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className={`flex-1 text-right ${winningTeam === 1 ? "font-bold" : "text-muted-foreground"}`}>
+                            <p className="text-sm flex items-center justify-end gap-1.5">
+                              {winningTeam === 1 && <Trophy size={12} className="text-amber-500 shrink-0" />}
+                              {team1.map(pm => pm.player.name).join(" & ")}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <span className={`w-2 h-2 rounded-full ${winningTeam === 1 ? "bg-team-red" : "bg-team-red/30"}`} />
+                            <span className="text-xs text-muted-foreground font-bold">vs</span>
+                            <span className={`w-2 h-2 rounded-full ${winningTeam === 2 ? "bg-team-blue" : "bg-team-blue/30"}`} />
+                          </div>
+                          <div className={`flex-1 ${winningTeam === 2 ? "font-bold" : "text-muted-foreground"}`}>
+                            <p className="text-sm flex items-center gap-1.5">
+                              {team2.map(pm => pm.player.name).join(" & ")}
+                              {winningTeam === 2 && <Trophy size={12} className="text-amber-500 shrink-0" />}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 

@@ -129,7 +129,7 @@ export default function Leaderboard() {
             const entry = leaderboard[1];
             return (
               <Link
-                to={`/stats?player=${entry.playerId}`}
+                to={`/stats?player=${entry.playerId}${season ? `&season=${season.id}` : ""}`}
                 key={entry.playerId}
                 className={`flex flex-col items-center p-3 rounded-2xl border-2 bg-gradient-to-b ${podiumColors[1]} animate-slide-up w-28 sm:w-32 cursor-pointer hover:scale-105 transition-transform`}
                 style={{ animationDelay: "100ms" }}
@@ -152,7 +152,7 @@ export default function Leaderboard() {
             const entry = leaderboard[0];
             return (
               <Link
-                to={`/stats?player=${entry.playerId}`}
+                to={`/stats?player=${entry.playerId}${season ? `&season=${season.id}` : ""}`}
                 key={entry.playerId}
                 className={`flex flex-col items-center p-4 rounded-2xl border-2 bg-gradient-to-b ${podiumColors[0]} animate-slide-up w-32 sm:w-36 -mt-4 cursor-pointer hover:scale-105 transition-transform`}
                 style={{ animationDelay: "0ms" }}
@@ -176,7 +176,7 @@ export default function Leaderboard() {
             const entry = leaderboard[2];
             return (
               <Link
-                to={`/stats?player=${entry.playerId}`}
+                to={`/stats?player=${entry.playerId}${season ? `&season=${season.id}` : ""}`}
                 key={entry.playerId}
                 className={`flex flex-col items-center p-3 rounded-2xl border-2 bg-gradient-to-b ${podiumColors[2]} animate-slide-up w-28 sm:w-32 cursor-pointer hover:scale-105 transition-transform`}
                 style={{ animationDelay: "200ms" }}
@@ -202,7 +202,7 @@ export default function Leaderboard() {
         <div className="space-y-2">
           {leaderboard.slice(3).map((entry, i) => (
             <Link
-              to={`/stats?player=${entry.playerId}`}
+              to={`/stats?player=${entry.playerId}${season ? `&season=${season.id}` : ""}`}
               key={entry.playerId}
               className="flex items-center gap-4 bg-card rounded-xl px-4 py-3 border border-border/50 animate-slide-up hover:border-primary/30 transition-colors cursor-pointer"
               style={{ animationDelay: `${(i + 3) * 60}ms` }}

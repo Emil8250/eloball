@@ -141,9 +141,10 @@ export default function SeasonDetail() {
               const finalElo = entry.finalElo ?? entry.startingElo;
               const eloChange = finalElo - entry.startingElo;
               return (
-                <div
+                <Link
+                  to={`/stats?player=${entry.playerId}&season=${season.id}`}
                   key={entry.playerId}
-                  className="flex items-center gap-3 px-4 py-3 hover:bg-muted/30 transition-colors animate-slide-up"
+                  className="flex items-center gap-3 px-4 py-3 hover:bg-muted/30 transition-colors animate-slide-up cursor-pointer"
                   style={{ animationDelay: `${i * 40}ms` }}
                 >
                   <span className="w-8 text-center text-sm">
@@ -173,7 +174,7 @@ export default function SeasonDetail() {
                       </p>
                     )}
                   </div>
-                </div>
+                </Link>
               );
             })}
           </div>

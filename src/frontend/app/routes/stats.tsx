@@ -282,9 +282,10 @@ export default function Stats() {
   const { data: allRecords, isLoading: recordsLoading } = useGetPlayerMatchesQuery();
   const { data: seasons, isLoading: seasonsLoading } = useGetSeasonsQuery();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [seasonFilter, setSeasonFilter] = useState<number | null>(null);
 
   const playerIdFromUrl = searchParams.get("player") ? Number(searchParams.get("player")) : null;
+  const seasonIdFromUrl = searchParams.get("season") ? Number(searchParams.get("season")) : null;
+  const [seasonFilter, setSeasonFilter] = useState<number | null>(seasonIdFromUrl);
   const [selectedPlayer, setSelectedPlayer] = useState<number | null>(playerIdFromUrl);
 
   const isLoading = recordsLoading || seasonsLoading;
@@ -328,13 +329,13 @@ export default function Stats() {
   const activePlayerId = selectedPlayer && playerStats.has(selectedPlayer) ? selectedPlayer : null;
   const activePlayerStats = activePlayerId ? playerStats.get(activePlayerId) : null;
 
-  function selectPlayer(playerId: number | null) {
+  function updateParams(playerId: number | null, seasonId: number | null) {
     setSelectedPlayer(playerId);
-    if (playerId) {
-      setSearchParams({ player: String(playerId) });
-    } else {
-      setSearchParams({});
-    }
+    setSeasonFilter(seasonId);
+    const params: Record<string, string> = {};
+    if (playerId) params.player = String(playerId);
+    if (seasonId) params.season = String(seasonId);
+    setSearchParams(params);
   }
 
   if (isLoading) {
@@ -358,7 +359,7 @@ export default function Stats() {
       {seasons && seasons.length > 0 && (
         <div className="flex gap-1.5 overflow-x-auto pb-2 mb-6 scrollbar-hide">
           <button
-            onClick={() => { setSeasonFilter(null); selectPlayer(null); }}
+            onClick={() => updateParams(null, null)}
             className={`shrink-0 px-4 py-1.5 rounded-full text-sm font-semibold transition-all cursor-pointer ${
               seasonFilter === null
                 ? "bg-violet-500 text-white shadow-sm"
@@ -370,7 +371,7 @@ export default function Stats() {
           {[...seasons].sort((a, b) => b.id - a.id).map(s => (
             <button
               key={s.id}
-              onClick={() => { setSeasonFilter(s.id); selectPlayer(null); }}
+              onClick={() => updateParams(null, s.id)}
               className={`shrink-0 px-4 py-1.5 rounded-full text-sm font-semibold transition-all cursor-pointer ${
                 seasonFilter === s.id
                   ? "bg-violet-500 text-white shadow-sm"
@@ -432,7 +433,7 @@ export default function Stats() {
           {sortedPlayers.map(p => (
             <button
               key={p.playerId}
-              onClick={() => selectPlayer(activePlayerId === p.playerId ? null : p.playerId)}
+              onClick={() => updateParams(activePlayerId === p.playerId ? null : p.playerId, seasonFilter)}
               className={`px-3 py-1.5 rounded-full text-sm font-semibold transition-all cursor-pointer ${
                 activePlayerId === p.playerId
                   ? "bg-violet-500 text-white shadow-sm"

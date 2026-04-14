@@ -2,7 +2,8 @@ import { useState, useMemo } from "react";
 import { useSearchParams } from "react-router";
 import { useGetPlayerMatchesQuery, useGetSeasonsQuery } from "../../apis/foosball/foosball";
 import type { PlayerMatchRecord } from "../../apis/foosball/types";
-import { Gamepad2, Trophy, Swords, Users, Flame, Target, Shield, Heart, TrendingUp } from "lucide-react";
+import { Gamepad2, Trophy, Swords, Users, Flame, Target, Shield, Heart, TrendingUp, Calendar } from "lucide-react";
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 
 export function meta() {
   return [{ title: "Eloball — Stats" }];
@@ -20,6 +21,7 @@ interface PlayerStats {
   teammates: Record<string, { games: number; wins: number }>;
   opponents: Record<string, { games: number; winsOver: number; lossesTo: number }>;
   streak: { type: "W" | "L"; count: number };
+  dayStats: Record<number, { wins: number; total: number }>;
 }
 
 interface DuoStats {
@@ -66,6 +68,7 @@ function computePlayerStats(records: PlayerMatchRecord[], seasonId?: number): Ma
           teammates: {},
           opponents: {},
           streak: { type: "W", count: 0 },
+          dayStats: {},
         });
       }
       const s = stats.get(pm.playerId)!;
@@ -80,6 +83,11 @@ function computePlayerStats(records: PlayerMatchRecord[], seasonId?: number): Ma
       } else {
         s.streak = { type: won ? "W" : "L", count: 1 };
       }
+
+      const day = new Date(pm.match.createdDateTime).getDay();
+      s.dayStats[day] ??= { wins: 0, total: 0 };
+      s.dayStats[day].total++;
+      if (won) s.dayStats[day].wins++;
 
       for (const t of pms) {
         if (t.playerId !== pm.playerId && t.team === pm.team) {
@@ -157,6 +165,27 @@ function computeRivalryStats(records: PlayerMatchRecord[], seasonId?: number): R
   return Object.values(rivalries).sort((a, b) => b.games - a.games);
 }
 
+function computeWinRateProgression(records: PlayerMatchRecord[], playerId: number, seasonId?: number): { match: number; wr: number }[] {
+  const matches = buildMatchesFromRecords(records, seasonId);
+  const sorted = [...matches].sort(
+    (a, b) => new Date(a[0].match.createdDateTime).getTime() - new Date(b[0].match.createdDateTime).getTime()
+  );
+
+  let wins = 0;
+  let total = 0;
+  const data: { match: number; wr: number }[] = [];
+
+  for (const pms of sorted) {
+    const pm = pms.find(p => p.playerId === playerId);
+    if (!pm) continue;
+    total++;
+    if (pm.team === pms[0].match.playerWonId) wins++;
+    data.push({ match: total, wr: Math.round((wins / total) * 100) });
+  }
+
+  return data;
+}
+
 // --- Components ---
 
 function HighlightCard({ icon: Icon, label, value, sub, color, delay }: {
@@ -184,7 +213,9 @@ function HighlightCard({ icon: Icon, label, value, sub, color, delay }: {
   );
 }
 
-function PlayerDetail({ stats }: { stats: PlayerStats }) {
+const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+function PlayerDetail({ stats, winRateData }: { stats: PlayerStats; winRateData: { match: number; wr: number }[] }) {
   const favoriteTeammate = Object.entries(stats.teammates)
     .sort((a, b) => b[1].games - a[1].games)[0];
   const bestTeammate = Object.entries(stats.teammates)
@@ -194,6 +225,15 @@ function PlayerDetail({ stats }: { stats: PlayerStats }) {
     .sort((a, b) => b[1].lossesTo - a[1].lossesTo)[0];
   const victim = Object.entries(stats.opponents)
     .sort((a, b) => b[1].winsOver - a[1].winsOver)[0];
+
+  const eligibleDays = Object.entries(stats.dayStats)
+    .filter(([, v]) => v.total >= 3)
+    .map(([day, v]) => ({ day: Number(day), wr: v.wins / v.total, ...v }));
+  const bestDay = eligibleDays.length >= 2
+    ? eligibleDays.sort((a, b) => b.wr - a.wr)[0] : null;
+
+  const h2h = Object.entries(stats.opponents)
+    .sort((a, b) => b[1].games - a[1].games);
 
   return (
     <div className="bg-card rounded-2xl border border-border/50 overflow-hidden animate-slide-up">
@@ -234,6 +274,15 @@ function PlayerDetail({ stats }: { stats: PlayerStats }) {
             sub={`${Math.round((bestTeammate[1].wins / bestTeammate[1].games) * 100)}% WR together`}
           />
         )}
+        {bestDay && (
+          <StatRow
+            icon={Calendar}
+            iconColor="text-emerald-500"
+            label="Best day"
+            value={DAY_NAMES[bestDay.day]}
+            sub={`${Math.round(bestDay.wr * 100)}% WR in ${bestDay.total} games`}
+          />
+        )}
         {victim && victim[1].winsOver > 0 && (
           <StatRow
             icon={Target}
@@ -251,6 +300,56 @@ function PlayerDetail({ stats }: { stats: PlayerStats }) {
             value={nemesis[0]}
             sub={`${nemesis[1].lossesTo}L / ${nemesis[1].winsOver}W against`}
           />
+        )}
+        {winRateData.length > 5 && (
+          <div className="px-4 py-3">
+            <div className="flex items-center gap-2 mb-2">
+              <TrendingUp size={14} className="text-primary" />
+              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Win Rate Over Time</span>
+            </div>
+            <ResponsiveContainer width="100%" height={160}>
+              <LineChart data={winRateData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                <XAxis dataKey="match" tick={{ fontSize: 11 }} />
+                <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} tickFormatter={(v) => `${v}%`} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: "var(--card)",
+                    border: "1px solid var(--border)",
+                    borderRadius: "12px",
+                    fontSize: "12px",
+                  }}
+                  formatter={(value) => [`${value}%`, "Win Rate"]}
+                  labelFormatter={(label) => `Match ${label}`}
+                />
+                <Line type="monotone" dataKey="wr" stroke="#8b5cf6" strokeWidth={2.5} dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        )}
+        {h2h.length > 0 && (
+          <div className="px-4 py-3">
+            <div className="flex items-center gap-2 mb-2">
+              <Swords size={14} className="text-primary" />
+              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Head to Head</span>
+            </div>
+            <div className="space-y-1.5">
+              {h2h.map(([name, record]) => {
+                const wr = record.games > 0 ? record.winsOver / record.games : 0;
+                return (
+                  <div key={name} className="flex items-center gap-2 text-sm">
+                    <span className="flex-1 font-medium truncate">{name}</span>
+                    <span className="text-xs text-muted-foreground tabular-nums">
+                      {record.winsOver}W / {record.lossesTo}L
+                    </span>
+                    <span className={`text-xs font-semibold tabular-nums w-10 text-right ${wr >= 0.5 ? "text-emerald-500" : "text-red-400"}`}>
+                      {Math.round(wr * 100)}%
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         )}
       </div>
     </div>
@@ -328,6 +427,13 @@ export default function Stats() {
   // Once data loads, resolve URL param player
   const activePlayerId = selectedPlayer && playerStats.has(selectedPlayer) ? selectedPlayer : null;
   const activePlayerStats = activePlayerId ? playerStats.get(activePlayerId) : null;
+
+  const winRateData = useMemo(
+    () => allRecords && activePlayerId
+      ? computeWinRateProgression(allRecords, activePlayerId, seasonFilter ?? undefined)
+      : [],
+    [allRecords, activePlayerId, seasonFilter]
+  );
 
   function updateParams(playerId: number | null, seasonId: number | null) {
     setSelectedPlayer(playerId);
@@ -445,7 +551,7 @@ export default function Stats() {
           ))}
         </div>
         {activePlayerStats ? (
-          <PlayerDetail stats={activePlayerStats} />
+          <PlayerDetail stats={activePlayerStats} winRateData={winRateData} />
         ) : (
           <div className="text-center py-8 text-muted-foreground">
             <Users size={32} className="mx-auto mb-2 opacity-50" />

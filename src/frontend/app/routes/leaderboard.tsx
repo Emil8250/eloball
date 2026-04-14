@@ -25,19 +25,28 @@ export default function Leaderboard() {
 
   const isLoading = seasonLoading || playersLoading || lbLoading;
 
-  // For active season, build leaderboard from player data
+  // For active season, build leaderboard from players who have matches this season
   const leaderboard: LeaderboardEntry[] | undefined = season?.isActive && players
-    ? [...players]
-        .sort((a, b) => b.elo - a.elo)
-        .map(p => ({
-          playerId: p.id,
-          playerName: p.name,
-          startingElo: 1000,
-          finalElo: p.elo,
-          matchesPlayed: 0,
-          matchesWon: 0,
-          winRate: 0,
-        }))
+    ? (() => {
+        if (!allPlayerMatches) return [];
+        const seasonMatches = allPlayerMatches.filter(pm => pm.match.seasonId === season.id);
+        const playersWithMatches = new Set<number>();
+        for (const pm of seasonMatches) {
+          playersWithMatches.add(pm.playerId);
+        }
+        return [...players]
+          .filter(p => playersWithMatches.has(p.id))
+          .sort((a, b) => b.elo - a.elo)
+          .map(p => ({
+            playerId: p.id,
+            playerName: p.name,
+            startingElo: 1000,
+            finalElo: p.elo,
+            matchesPlayed: 0,
+            matchesWon: 0,
+            winRate: 0,
+          }));
+      })()
     : seasonLeaderboard;
 
   if (isLoading) {

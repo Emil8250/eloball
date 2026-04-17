@@ -5,6 +5,7 @@ import { useCallback, useEffect } from "react";
 import { toast } from "sonner";
 import { Button } from "~/components/ui/button";
 import { ArrowLeftRight, Scale, X, Gamepad2, Trophy } from "lucide-react";
+import {useAuth0} from "@auth0/auth0-react";
 
 export function meta() {
   return [{ title: "Eloball — Play" }];
@@ -109,15 +110,26 @@ export default function Game() {
   }
 
   const sortedPlayers = players ? [...players].sort((a, b) => a.name.localeCompare(b.name)) : [];
+  const {
+    isLoading, // Loading state, the SDK needs to reach Auth0 on load
+    isAuthenticated,
+    error,
+    loginWithRedirect: login, // Starts the login flow
+    logout: auth0Logout, // Starts the logout flow
+    user, // User profile
+  } = useAuth0();
 
+  const signup = () =>
+      login({ authorizationParams: { screen_hint: "signup" } });
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
+      
       {/* Foosball-style header */}
       <div className="text-center mb-6">
         <h1 className="text-2xl font-extrabold">New Match</h1>
         <p className="text-xs text-muted-foreground mt-1">Select players and assign teams</p>
       </div>
-
+      <button onClick={signup}>Signup</button>
       {/* Team Display — Bonzini-inspired with wood/green field vibe */}
       <div className="rounded-2xl bg-gradient-to-b from-emerald-800 to-emerald-900 p-4 mb-4 shadow-lg relative overflow-hidden">
         {/* Field lines */}

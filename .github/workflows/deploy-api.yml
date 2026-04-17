@@ -8,6 +8,8 @@ on:
 env:
   AZURE_WEBAPP_NAME: eloball-api
   DOTNET_VERSION: 8.0.x
+  PROJECT_PATH: ./src/api/api.csproj
+  PUBLISH_PATH: ./publish
 
 jobs:
   build-and-deploy:
@@ -20,12 +22,12 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      - run: dotnet restore
-      - run: dotnet build --configuration Release --no-restore
-      - run: dotnet publish --configuration Release --output ./publish --no-build
+      - run: dotnet restore ${{ env.PROJECT_PATH }}
+      - run: dotnet build ${{ env.PROJECT_PATH }} --configuration Release --no-restore
+      - run: dotnet publish ${{ env.PROJECT_PATH }} --configuration Release --output ${{ env.PUBLISH_PATH }} --no-build
 
       - uses: azure/webapps-deploy@v3
         with:
           app-name: ${{ env.AZURE_WEBAPP_NAME }}
           publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          package: ./publish
+          package: ${{ env.PUBLISH_PATH }}

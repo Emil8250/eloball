@@ -3,6 +3,8 @@ import type { BaseQueryFn, FetchArgs, FetchBaseQueryError } from '@reduxjs/toolk
 import type { LeaderboardEntry, Player, PlayerMatchRecord, Season, SubmitMatch } from "./types";
 import { getMockResponse } from '../../mocks/data'
 
+const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'https://api.billigeterninger.dk/api/'
+
 let getToken: (() => Promise<string>) | null = null
 
 export const setTokenGetter = (fn: (() => Promise<string>) | null) => {
@@ -10,13 +12,11 @@ export const setTokenGetter = (fn: (() => Promise<string>) | null) => {
 }
 
 const realBaseQuery = fetchBaseQuery({
-    baseUrl: 'https://api.billigeterninger.dk/api/',
+    baseUrl: API_BASE_URL,
     prepareHeaders: async (headers) => {
-        console.log('[prepareHeaders] called. getToken is', getToken ? 'set' : 'null')
         if (getToken) {
             try {
                 const token = await getToken()
-                console.log('[prepareHeaders] token', token)
                 if (token)
                     headers.set('Authorization', `Bearer ${token}`)
             } catch (err) {
@@ -30,7 +30,7 @@ const realBaseQuery = fetchBaseQuery({
 const baseQueryWithMock: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQueryError> = async (args, api, extraOptions) => {
     if (typeof window !== 'undefined' && window.location.search.includes('mock')) {
         const url = typeof args === 'string' ? args : args.url
-        const fullUrl = 'https://api.billigeterninger.dk/api/' + url
+        const fullUrl = API_BASE_URL + url
         const mockData = getMockResponse(fullUrl)
         if (mockData !== undefined) {
             return { data: mockData }

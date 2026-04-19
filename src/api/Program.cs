@@ -42,6 +42,8 @@ var auth0Domain = builder.Configuration["Auth0:Domain"]
     ?? throw new InvalidOperationException("Auth0:Domain is not configured.");
 var auth0Audience = builder.Configuration["Auth0:Audience"]
     ?? throw new InvalidOperationException("Auth0:Audience is not configured.");
+var auth0RolesClaim = builder.Configuration["Auth0:RolesClaim"]
+    ?? throw new InvalidOperationException("Auth0:RolesClaim is not configured.");
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -55,7 +57,8 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateAudience = true,
             ValidAudience = auth0Audience,
             ValidateLifetime = true,
-            NameClaimType = "sub"
+            NameClaimType = "sub",
+            RoleClaimType = auth0RolesClaim
         };
     });
 
@@ -63,6 +66,7 @@ builder.Services.AddAuthorization(options =>
 {
     options.FallbackPolicy = new AuthorizationPolicyBuilder()
         .RequireAuthenticatedUser()
+        .RequireRole("EloballPlayer")
         .Build();
 });
 
@@ -74,7 +78,10 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-app.UseHttpsRedirection();
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 app.UseCors(allowAllOrigins);
 app.UseAuthentication();
 app.UseAuthorization();

@@ -8,7 +8,6 @@ import {
     NavLink,
     useSearchParams,
 } from "react-router";
-
 import type {Route} from "./+types/root";
 import "../index.css";
 import {store} from '~/store'
@@ -17,6 +16,9 @@ import {Toaster} from "sonner";
 import {Trophy, Calendar, Swords, BarChart3, Loader2} from "lucide-react";
 import PlayerProvider from "~/context/PlayerContext/PlayerProvider";
 import {Auth0Provider, useAuth0} from "@auth0/auth0-react";
+import {setTokenGetter} from "../apis/foosball/foosball";
+
+const AUTH0_AUDIENCE = "https://api.billigeterninger.dk/";
 
 export const links: Route.LinksFunction = () => [
     {rel: "preconnect", href: "https://fonts.googleapis.com"},
@@ -109,7 +111,13 @@ function LoginPage() {
 }
 
 function AppShell({children}: { children: React.ReactNode }) {
-    const {isAuthenticated, isLoading} = useAuth0();
+    const {isAuthenticated, isLoading, getAccessTokenSilently} = useAuth0();
+
+    if (isAuthenticated) {
+        setTokenGetter(() => getAccessTokenSilently({authorizationParams: {audience: AUTH0_AUDIENCE}}));
+    } else {
+        setTokenGetter(null);
+    }
 
     if (isLoading) {
         return (
@@ -191,7 +199,10 @@ export function Layout({children}: { children: React.ReactNode }) {
         <Auth0Provider
             domain="dev-82kcp8l6j263vhyk.eu.auth0.com"
             clientId="26B0Dqdn2tZ3QZl3fB6xfZQKjGDnY41W"
-            authorizationParams={{redirect_uri: import.meta.env.VITE_DOMAIN}}
+            authorizationParams={{
+                redirect_uri: import.meta.env.VITE_DOMAIN,
+                audience: AUTH0_AUDIENCE,
+            }}
         >
             <html lang="en">
             <head>

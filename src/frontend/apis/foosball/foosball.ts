@@ -3,7 +3,29 @@ import type { BaseQueryFn, FetchArgs, FetchBaseQueryError } from '@reduxjs/toolk
 import type { LeaderboardEntry, Player, PlayerMatchRecord, Season, SubmitMatch } from "./types";
 import { getMockResponse } from '../../mocks/data'
 
-const realBaseQuery = fetchBaseQuery({ baseUrl: 'https://api.billigeterninger.dk/api/' })
+let getToken: (() => Promise<string>) | null = null
+
+export const setTokenGetter = (fn: (() => Promise<string>) | null) => {
+    getToken = fn
+}
+
+const realBaseQuery = fetchBaseQuery({
+    baseUrl: 'https://api.billigeterninger.dk/api/',
+    prepareHeaders: async (headers) => {
+        console.log('[prepareHeaders] called. getToken is', getToken ? 'set' : 'null')
+        if (getToken) {
+            try {
+                const token = await getToken()
+                console.log('[prepareHeaders] token', token)
+                if (token)
+                    headers.set('Authorization', `Bearer ${token}`)
+            } catch (err) {
+                console.error('[prepareHeaders] token fetch failed', err)
+            }
+        }
+        return headers
+    },
+})
 
 const baseQueryWithMock: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQueryError> = async (args, api, extraOptions) => {
     if (typeof window !== 'undefined' && window.location.search.includes('mock')) {

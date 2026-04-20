@@ -10,13 +10,16 @@ import {
 } from "react-router";
 import type {Route} from "./+types/root";
 import "../index.css";
-import {store} from '~/store'
-import {Provider} from "react-redux";
+import {store, type RootState} from '~/store'
+import {Provider, useDispatch, useSelector} from "react-redux";
 import {Toaster} from "sonner";
 import {Trophy, Calendar, Swords, BarChart3, Loader2} from "lucide-react";
 import PlayerProvider from "~/context/PlayerContext/PlayerProvider";
 import {Auth0Provider, useAuth0} from "@auth0/auth0-react";
 import {setTokenGetter} from "../apis/foosball/foosball";
+import {useEffect} from "react";
+import {setForbidden} from "~/authSlice";
+import {ForbiddenPage} from "~/components/ForbiddenPage";
 
 const AUTH0_AUDIENCE = "https://api.billigeterninger.dk/";
 
@@ -112,6 +115,12 @@ function LoginPage() {
 
 function AppShell({children}: { children: React.ReactNode }) {
     const {isAuthenticated, isLoading, getAccessTokenSilently} = useAuth0();
+    const forbidden = useSelector((s: RootState) => s.auth.forbidden);
+    const dispatch = useDispatch();
+
+    useEffect(() => {
+        if (!isAuthenticated) dispatch(setForbidden(false));
+    }, [isAuthenticated, dispatch]);
 
     if (isAuthenticated) {
         setTokenGetter(() => getAccessTokenSilently({authorizationParams: {audience: AUTH0_AUDIENCE}}));
@@ -129,6 +138,10 @@ function AppShell({children}: { children: React.ReactNode }) {
 
     if (!isAuthenticated) {
         return <LoginPage/>;
+    }
+
+    if (forbidden) {
+        return <ForbiddenPage/>;
     }
 
     return (

@@ -42,8 +42,10 @@ var auth0Domain = builder.Configuration["Auth0:Domain"]
     ?? throw new InvalidOperationException("Auth0:Domain is not configured.");
 var auth0Audience = builder.Configuration["Auth0:Audience"]
     ?? throw new InvalidOperationException("Auth0:Audience is not configured.");
-var auth0RolesClaim = builder.Configuration["Auth0:RolesClaim"]
-    ?? throw new InvalidOperationException("Auth0:RolesClaim is not configured.");
+var auth0AttributeClaim = builder.Configuration["Auth0:AttributeClaim"]
+    ?? throw new InvalidOperationException("Auth0:AttributeClaim is not configured.");
+var auth0RequiredAttribute = builder.Configuration["Auth0:RequiredAttribute"]
+    ?? throw new InvalidOperationException("Auth0:RequiredAttribute is not configured.");
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -57,8 +59,7 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             ValidateAudience = true,
             ValidAudience = auth0Audience,
             ValidateLifetime = true,
-            NameClaimType = "sub",
-            RoleClaimType = auth0RolesClaim
+            NameClaimType = "sub"
         };
     });
 
@@ -66,7 +67,7 @@ builder.Services.AddAuthorization(options =>
 {
     options.FallbackPolicy = new AuthorizationPolicyBuilder()
         .RequireAuthenticatedUser()
-        .RequireRole("EloballPlayer")
+        .RequireClaim(auth0AttributeClaim, auth0RequiredAttribute)
         .Build();
 });
 

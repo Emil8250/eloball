@@ -44,6 +44,13 @@ export default function Game() {
   const canSubmit = team1.length > 0 && team2.length > 0 && selected.length >= 2;
   const canCalibrate = selected.length >= 3 && selected.length <= 4;
 
+  const team1Elo = team1.reduce((sum, p) => sum + p.player.elo, 0);
+  const team2Elo = team2.reduce((sum, p) => sum + p.player.elo, 0);
+  const startingTeam: 1 | 2 | null =
+    team1.length > 0 && team2.length > 0 && team1Elo !== team2Elo
+      ? (team1Elo < team2Elo ? 1 : 2)
+      : null;
+
   const isSelected = (id: number) => selected.some(p => p.player.id === id);
 
   const addToTeam = (player: { id: number; name: string; elo: number }, team: number) => {
@@ -196,6 +203,17 @@ export default function Game() {
 
         {/* Actions inside the field */}
         <div className="flex gap-2 mt-3 relative">
+          {startingTeam && (
+            <div
+              className={`inline-flex items-center rounded-full px-3 text-xs font-bold backdrop-blur-sm border ${
+                startingTeam === 1
+                  ? "bg-red-500/25 border-red-400/40 text-red-200"
+                  : "bg-blue-500/25 border-blue-400/40 text-blue-200"
+              }`}
+            >
+              {startingTeam === 1 ? "Red starts" : "Blue starts"}
+            </div>
+          )}
           <Button
             onClick={calibrateTeams}
             disabled={!canCalibrate || submitting}

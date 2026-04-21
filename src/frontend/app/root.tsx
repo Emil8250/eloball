@@ -76,39 +76,38 @@ function LoginPage() {
     const authErrorDescription = searchParams.get("error_description");
 
     return (
-        <div className="min-h-screen flex flex-col items-center justify-center gap-8 px-6">
-            <div className="flex flex-col items-center gap-3">
-                <img src="/logo.png" alt="Eloball" className="h-20 w-20 object-contain dark:hidden"/>
-                <img src="/logo-dark.png" alt="Eloball" className="h-20 w-20 object-contain hidden dark:block"/>
-                <h1 className="text-3xl font-extrabold tracking-tight">Eloball</h1>
+        <div className="min-h-screen flex flex-col items-center justify-center px-6">
+            <div className="w-full max-w-sm flex flex-col items-center gap-6 rounded-2xl bg-white dark:bg-neutral-800 p-8 shadow-sm">
+                <img src="/logo.png" alt="Eloball" className="h-auto w-56 object-contain dark:hidden"/>
+                <img src="/logo-dark.png" alt="Eloball" className="h-auto w-56 object-contain hidden dark:block"/>
                 <p className="text-muted-foreground text-center max-w-xs">
                     Track your foosball ELO rating and compete across seasons.
                 </p>
-            </div>
 
-            {authError && authErrorDescription && (
-                <div className="w-full max-w-xs rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 shadow-sm dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
-                    <p className="font-semibold">Login failed</p>
-                    <p className="mt-1">{authErrorDescription}</p>
+                {authError && authErrorDescription && (
+                    <div className="w-full rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 shadow-sm dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
+                        <p className="font-semibold">Login failed</p>
+                        <p className="mt-1">{authErrorDescription}</p>
+                    </div>
+                )}
+
+                <div className="flex flex-col gap-3 w-full">
+                    <button
+                        onClick={() => loginWithRedirect()}
+                        disabled={isLoading}
+                        className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-sm transition-opacity hover:opacity-90 disabled:opacity-50"
+                    >
+                        {isLoading && <Loader2 size={16} className="animate-spin"/>}
+                        Log in
+                    </button>
+                    <button
+                        onClick={() => loginWithRedirect({authorizationParams: {screen_hint: "signup"}})}
+                        disabled={isLoading}
+                        className="flex items-center justify-center gap-2 w-full py-3 rounded-xl border border-border font-semibold text-sm transition-colors hover:bg-muted disabled:opacity-50"
+                    >
+                        Sign up
+                    </button>
                 </div>
-            )}
-
-            <div className="flex flex-col gap-3 w-full max-w-xs">
-                <button
-                    onClick={() => loginWithRedirect()}
-                    disabled={isLoading}
-                    className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-sm transition-opacity hover:opacity-90 disabled:opacity-50"
-                >
-                    {isLoading && <Loader2 size={16} className="animate-spin"/>}
-                    Log in
-                </button>
-                <button
-                    onClick={() => loginWithRedirect({authorizationParams: {screen_hint: "signup"}})}
-                    disabled={isLoading}
-                    className="flex items-center justify-center gap-2 w-full py-3 rounded-xl border border-border font-semibold text-sm transition-colors hover:bg-muted disabled:opacity-50"
-                >
-                    Sign up
-                </button>
             </div>
         </div>
     );

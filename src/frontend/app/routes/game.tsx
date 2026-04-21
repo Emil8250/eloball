@@ -122,8 +122,8 @@ export default function Game() {
       
       {/* Foosball-style header */}
       <div className="text-center mb-6">
-        <h1 className="text-2xl font-extrabold">New Match</h1>
-        <p className="text-xs text-muted-foreground mt-1">Select players and assign teams</p>
+        <h1 className="text-2xl font-extrabold mb-1">New Match</h1>
+        <p className="text-sm text-muted-foreground">Select players and assign teams</p>
       </div>
       {/* Team Display — Bonzini-inspired with wood/green field vibe */}
       <div className="rounded-2xl bg-gradient-to-b from-emerald-800 to-emerald-900 p-4 mb-4 shadow-lg relative overflow-hidden">

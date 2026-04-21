@@ -158,7 +158,16 @@ function AppShell({children}: { children: React.ReactNode }) {
             {/* Desktop top nav */}
             <nav
                 className="hidden md:flex fixed top-0 left-0 right-0 z-50 h-24 items-start pt-4 justify-center px-6 bg-gradient-to-b from-background from-50% to-transparent pointer-events-none [&>*]:pointer-events-auto">
-                <div className="flex items-center gap-1 bg-muted rounded-2xl p-1">
+                <div className="flex items-center gap-2">
+                    <NavLink
+                        to="/"
+                        aria-label="Eloball home"
+                        className="h-11 w-11 rounded-full overflow-hidden shadow-sm ring-1 ring-border transition-transform hover:scale-105"
+                    >
+                        <img src="/favicon.png" alt="" className="h-full w-full object-cover dark:hidden"/>
+                        <img src="/favicon-dark.png" alt="" className="h-full w-full object-cover hidden dark:block"/>
+                    </NavLink>
+                    <div className="flex items-center gap-1 bg-muted rounded-2xl p-1">
                     {navItems.map(({to, label, icon: Icon, activeBg}) => (
                         <NavLink
                             key={to}
@@ -176,8 +185,19 @@ function AppShell({children}: { children: React.ReactNode }) {
                             {label}
                         </NavLink>
                     ))}
+                    </div>
                 </div>
             </nav>
+
+            {/* Mobile brand mark */}
+            <NavLink
+                to="/"
+                aria-label="Eloball home"
+                className="md:hidden fixed top-3 left-3 z-50 h-9 w-9 rounded-full overflow-hidden shadow-sm ring-1 ring-border"
+            >
+                <img src="/favicon.png" alt="" className="h-full w-full object-cover dark:hidden"/>
+                <img src="/favicon-dark.png" alt="" className="h-full w-full object-cover hidden dark:block"/>
+            </NavLink>
 
             {/* Page content */}
             <main>{children}</main>

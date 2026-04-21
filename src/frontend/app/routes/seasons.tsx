@@ -252,7 +252,10 @@ export default function Seasons() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
-      <h1 className="text-2xl font-extrabold text-center mb-6">Seasons</h1>
+      <div className="text-center mb-6">
+        <h1 className="text-2xl font-extrabold mb-1">Seasons</h1>
+        <p className="text-sm text-muted-foreground">Past seasons and champions</p>
+      </div>
 
       {/* Active season banner — links to leaderboard */}
       {activeSeason && <ActiveSeasonBanner season={activeSeason} />}

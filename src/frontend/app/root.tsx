@@ -14,7 +14,7 @@ import "../index.css";
 import {store, type RootState} from '~/store'
 import {Provider, useDispatch, useSelector} from "react-redux";
 import {Toaster} from "sonner";
-import {Trophy, Calendar, Swords, BarChart3, Loader2} from "lucide-react";
+import {Trophy, Calendar, Swords, BarChart3, Loader2, User} from "lucide-react";
 import PlayerProvider from "~/context/PlayerContext/PlayerProvider";
 import {Auth0Provider, useAuth0} from "@auth0/auth0-react";
 import {setTokenGetter} from "../apis/foosball/foosball";
@@ -65,6 +65,13 @@ const navItems = [
         icon: BarChart3,
         activeBg: "bg-violet-500 text-white shadow-md",
         activeMobile: "bg-violet-500 text-white shadow-sm"
+    },
+    {
+        to: "/profile",
+        label: "Profile",
+        icon: User,
+        activeBg: "bg-sky-500 text-white shadow-md",
+        activeMobile: "bg-sky-500 text-white shadow-sm"
     },
 ];
 
@@ -191,7 +198,7 @@ function AppShell({children}: { children: React.ReactNode }) {
                             to={to}
                             end={to === "/"}
                             className={({isActive}) =>
-                                `flex flex-col items-center gap-0.5 w-20 py-1.5 rounded-xl transition-all duration-200 ${
+                                `flex flex-col items-center gap-0.5 flex-1 max-w-20 py-1.5 rounded-xl transition-all duration-200 ${
                                     isActive
                                         ? activeMobile
                                         : "text-muted-foreground"

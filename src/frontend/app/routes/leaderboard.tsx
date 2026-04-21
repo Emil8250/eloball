@@ -297,7 +297,7 @@ export default function Leaderboard() {
       )}
 
       {/* Start Game — sticky at bottom of viewport, in flow after list */}
-      <div className="sticky bottom-20 md:bottom-0 z-40 flex justify-center pt-8 pb-4 mt-2 bg-gradient-to-b from-transparent to-background">
+      <div className="sticky bottom-20 md:bottom-0 z-40 flex justify-center pt-8 pb-4 mt-2 md:bg-gradient-to-b md:from-transparent md:to-background">
         <Link
           to="/game"
           className="bg-orange-500 hover:bg-orange-600 text-white rounded-2xl px-8 py-3 font-bold shadow-lg shadow-orange-500/25 inline-flex items-center gap-2 hover:scale-105 active:scale-95 transition-all"

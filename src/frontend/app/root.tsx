@@ -6,6 +6,7 @@ import {
     Scripts,
     ScrollRestoration,
     NavLink,
+    useLocation,
     useSearchParams,
 } from "react-router";
 import type {Route} from "./+types/root";
@@ -117,6 +118,8 @@ function AppShell({children}: { children: React.ReactNode }) {
     const {isAuthenticated, isLoading, getAccessTokenSilently} = useAuth0();
     const forbidden = useSelector((s: RootState) => s.auth.forbidden);
     const dispatch = useDispatch();
+    const {pathname} = useLocation();
+    const hasFab = pathname === "/" || pathname === "/seasons";
 
     useEffect(() => {
         if (!isAuthenticated) dispatch(setForbidden(false));
@@ -173,11 +176,16 @@ function AppShell({children}: { children: React.ReactNode }) {
             {/* Page content */}
             <main>{children}</main>
 
+            {/* Mobile bottom gradient — extends above the nav to cover the FAB on routes that have one */}
+            <div
+                className={`md:hidden fixed left-0 right-0 bottom-0 pointer-events-none z-30 bg-gradient-to-t from-background to-transparent ${
+                    hasFab ? "h-40 from-40%" : "h-16 from-60%"
+                }`}
+            />
+
             {/* Mobile bottom tabs */}
             <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50">
-                <div
-                    className="absolute inset-0 bg-gradient-to-t from-background from-60% to-transparent pointer-events-none"/>
-                <div className="relative flex items-center justify-around h-16 px-2">
+                <div className="flex items-center justify-around h-16 px-2">
                     {navItems.map(({to, label, icon: Icon, activeMobile}) => (
                         <NavLink
                             key={to}

@@ -281,7 +281,7 @@ export default function Seasons() {
       )}
 
       {/* Start New Season — sticky at bottom */}
-      <div className="sticky bottom-20 md:bottom-0 z-40 flex justify-center pt-8 pb-4 mt-2 bg-gradient-to-b from-transparent to-background">
+      <div className="sticky bottom-20 md:bottom-0 z-40 flex justify-center pt-8 pb-4 mt-2 md:bg-gradient-to-b md:from-transparent md:to-background">
         <button
           onClick={() => { setNewName(generateSeasonName()); setDialogOpen(true); }}
           className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl px-8 py-3 font-bold shadow-lg shadow-emerald-600/25 inline-flex items-center gap-2 hover:scale-105 active:scale-95 transition-all"

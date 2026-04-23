@@ -14,7 +14,7 @@ import "../index.css";
 import {store, type RootState} from '~/store'
 import {Provider, useDispatch, useSelector} from "react-redux";
 import {Toaster} from "sonner";
-import {Trophy, Calendar, Swords, BarChart3, Loader2} from "lucide-react";
+import {Trophy, Calendar, Swords, BarChart3, Loader2, User} from "lucide-react";
 import PlayerProvider from "~/context/PlayerContext/PlayerProvider";
 import {Auth0Provider, useAuth0} from "@auth0/auth0-react";
 import {setTokenGetter} from "../apis/foosball/foosball";
@@ -66,6 +66,13 @@ const navItems = [
         activeBg: "bg-violet-500 text-white shadow-md",
         activeMobile: "bg-violet-500 text-white shadow-sm"
     },
+    {
+        to: "/profile",
+        label: "Profile",
+        icon: User,
+        activeBg: "bg-sky-500 text-white shadow-md",
+        activeMobile: "bg-sky-500 text-white shadow-sm"
+    },
 ];
 
 function LoginPage() {
@@ -76,39 +83,38 @@ function LoginPage() {
     const authErrorDescription = searchParams.get("error_description");
 
     return (
-        <div className="min-h-screen flex flex-col items-center justify-center gap-8 px-6">
-            <div className="flex flex-col items-center gap-3">
-                <img src="/logo.png" alt="Eloball" className="h-20 w-20 object-contain dark:hidden"/>
-                <img src="/logo-dark.png" alt="Eloball" className="h-20 w-20 object-contain hidden dark:block"/>
-                <h1 className="text-3xl font-extrabold tracking-tight">Eloball</h1>
+        <div className="min-h-screen flex flex-col items-center justify-center px-6">
+            <div className="w-full max-w-sm flex flex-col items-center gap-6 rounded-2xl bg-white dark:bg-neutral-800 p-8 shadow-sm">
+                <img src="/logo.png" alt="Eloball" className="h-auto w-56 object-contain dark:hidden"/>
+                <img src="/logo-dark.png" alt="Eloball" className="h-auto w-56 object-contain hidden dark:block"/>
                 <p className="text-muted-foreground text-center max-w-xs">
                     Track your foosball ELO rating and compete across seasons.
                 </p>
-            </div>
 
-            {authError && authErrorDescription && (
-                <div className="w-full max-w-xs rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 shadow-sm dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
-                    <p className="font-semibold">Login failed</p>
-                    <p className="mt-1">{authErrorDescription}</p>
+                {authError && authErrorDescription && (
+                    <div className="w-full rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-700 shadow-sm dark:border-red-900 dark:bg-red-950/40 dark:text-red-300">
+                        <p className="font-semibold">Login failed</p>
+                        <p className="mt-1">{authErrorDescription}</p>
+                    </div>
+                )}
+
+                <div className="flex flex-col gap-3 w-full">
+                    <button
+                        onClick={() => loginWithRedirect()}
+                        disabled={isLoading}
+                        className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-sm transition-opacity hover:opacity-90 disabled:opacity-50"
+                    >
+                        {isLoading && <Loader2 size={16} className="animate-spin"/>}
+                        Log in
+                    </button>
+                    <button
+                        onClick={() => loginWithRedirect({authorizationParams: {screen_hint: "signup"}})}
+                        disabled={isLoading}
+                        className="flex items-center justify-center gap-2 w-full py-3 rounded-xl border border-border font-semibold text-sm transition-colors hover:bg-muted disabled:opacity-50"
+                    >
+                        Sign up
+                    </button>
                 </div>
-            )}
-
-            <div className="flex flex-col gap-3 w-full max-w-xs">
-                <button
-                    onClick={() => loginWithRedirect()}
-                    disabled={isLoading}
-                    className="flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-sm transition-opacity hover:opacity-90 disabled:opacity-50"
-                >
-                    {isLoading && <Loader2 size={16} className="animate-spin"/>}
-                    Log in
-                </button>
-                <button
-                    onClick={() => loginWithRedirect({authorizationParams: {screen_hint: "signup"}})}
-                    disabled={isLoading}
-                    className="flex items-center justify-center gap-2 w-full py-3 rounded-xl border border-border font-semibold text-sm transition-colors hover:bg-muted disabled:opacity-50"
-                >
-                    Sign up
-                </button>
             </div>
         </div>
     );
@@ -152,7 +158,16 @@ function AppShell({children}: { children: React.ReactNode }) {
             {/* Desktop top nav */}
             <nav
                 className="hidden md:flex fixed top-0 left-0 right-0 z-50 h-24 items-start pt-4 justify-center px-6 bg-gradient-to-b from-background from-50% to-transparent pointer-events-none [&>*]:pointer-events-auto">
-                <div className="flex items-center gap-1 bg-muted rounded-2xl p-1">
+                <div className="flex items-center gap-2">
+                    <NavLink
+                        to="/"
+                        aria-label="Eloball home"
+                        className="h-11 w-11 rounded-full overflow-hidden shadow-sm ring-1 ring-border transition-transform hover:scale-105"
+                    >
+                        <img src="/favicon.png" alt="" className="h-full w-full object-cover dark:hidden"/>
+                        <img src="/favicon-dark.png" alt="" className="h-full w-full object-cover hidden dark:block"/>
+                    </NavLink>
+                    <div className="flex items-center gap-1 bg-muted rounded-2xl p-1">
                     {navItems.map(({to, label, icon: Icon, activeBg}) => (
                         <NavLink
                             key={to}
@@ -170,8 +185,19 @@ function AppShell({children}: { children: React.ReactNode }) {
                             {label}
                         </NavLink>
                     ))}
+                    </div>
                 </div>
             </nav>
+
+            {/* Mobile brand mark */}
+            <NavLink
+                to="/"
+                aria-label="Eloball home"
+                className="md:hidden fixed top-3 left-3 z-50 h-9 w-9 rounded-full overflow-hidden shadow-sm ring-1 ring-border"
+            >
+                <img src="/favicon.png" alt="" className="h-full w-full object-cover dark:hidden"/>
+                <img src="/favicon-dark.png" alt="" className="h-full w-full object-cover hidden dark:block"/>
+            </NavLink>
 
             {/* Page content */}
             <main>{children}</main>
@@ -192,7 +218,7 @@ function AppShell({children}: { children: React.ReactNode }) {
                             to={to}
                             end={to === "/"}
                             className={({isActive}) =>
-                                `flex flex-col items-center gap-0.5 w-20 py-1.5 rounded-xl transition-all duration-200 ${
+                                `flex flex-col items-center gap-0.5 flex-1 max-w-20 py-1.5 rounded-xl transition-all duration-200 ${
                                     isActive
                                         ? activeMobile
                                         : "text-muted-foreground"

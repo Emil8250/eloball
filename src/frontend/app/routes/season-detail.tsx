@@ -1,6 +1,8 @@
+import { useMemo } from "react";
 import { useParams, Link } from "react-router";
 import { useGetSeasonQuery, useGetSeasonLeaderboardQuery, useGetPlayersQuery, useGetPlayerMatchesQuery } from "../../apis/foosball/foosball";
 import type { LeaderboardEntry } from "../../apis/foosball/types";
+import { computePlayerStats } from "~/lib/playerStats";
 import { ArrowLeft, Calendar, Gamepad2, Trophy } from "lucide-react";
 
 const medals = ["🥇", "🥈", "🥉"];
@@ -23,11 +25,27 @@ export default function SeasonDetail() {
 
   const isLoading = seasonLoading || lbLoading || playersLoading;
 
+  // Compute W/L/played per player from match records (backend leaderboard stats are unreliable)
+  const playerStats = useMemo(
+    () => computePlayerStats(allPlayerMatches ?? [], seasonId),
+    [allPlayerMatches, seasonId]
+  );
+
+  const withStats = (entry: LeaderboardEntry): LeaderboardEntry => {
+    const s = playerStats.get(entry.playerId);
+    return {
+      ...entry,
+      matchesPlayed: s?.matches ?? 0,
+      matchesWon: s?.wins ?? 0,
+      winRate: s?.winRate ?? 0,
+    };
+  };
+
   // For active season, build leaderboard from player data
   const leaderboard: LeaderboardEntry[] | undefined = season?.isActive && players
     ? [...players]
         .sort((a, b) => b.elo - a.elo)
-        .map(p => ({
+        .map(p => withStats({
           playerId: p.id,
           playerName: p.name,
           startingElo: 1000,
@@ -36,7 +54,7 @@ export default function SeasonDetail() {
           matchesWon: 0,
           winRate: 0,
         }))
-    : seasonLeaderboard;
+    : seasonLeaderboard?.map(withStats);
 
   if (isLoading) {
     return (
@@ -59,7 +77,11 @@ export default function SeasonDetail() {
     ? new Date(season.endDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
     : "Present";
 
-  const totalMatches = leaderboard ? Math.round(leaderboard.reduce((sum, e) => sum + e.matchesPlayed, 0) / 2) : 0;
+  const totalMatches = new Set(
+    (allPlayerMatches ?? [])
+      .filter(pm => pm.match.seasonId === seasonId)
+      .map(pm => pm.matchId)
+  ).size;
 
   // Group playerMatches by matchId for this season, then take latest 15, grouped by date
   const matchesByDate = (() => {

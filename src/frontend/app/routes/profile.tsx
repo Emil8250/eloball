@@ -8,6 +8,7 @@ import {
     Coffee,
     Crown,
     Flame,
+    Gamepad2,
     Globe,
     GraduationCap,
     Loader2,
@@ -15,6 +16,7 @@ import {
     Mail,
     Moon,
     Mountain,
+    Pencil,
     Plus,
     Rocket,
     Shield,
@@ -28,6 +30,7 @@ import {
     Zap,
     type LucideIcon,
 } from "lucide-react";
+import { useGetMeQuery, useRenamePlayerMutation } from "../../apis/foosball/foosball";
 import { Button } from "~/components/ui/button";
 import {
     Dialog,
@@ -141,12 +144,36 @@ function Avatar({ src, name, email }: { src: string | undefined; name: string | 
 
 export default function Profile() {
     const { user, isLoading, logout } = useAuth0();
+    const { data: me } = useGetMeQuery();
+    const [renamePlayer, { isLoading: renaming }] = useRenamePlayerMutation();
     const [leagues, setLeagues] = useState<MockLeague[]>([]);
     const [activeId, setActiveId] = useState<number | null>(null);
     const [leaveTarget, setLeaveTarget] = useState<MockLeague | null>(null);
     const [switchTarget, setSwitchTarget] = useState<MockLeague | null>(null);
     const [joinTarget, setJoinTarget] = useState<MockLeague | null>(null);
     const [findOpen, setFindOpen] = useState(false);
+    const [renameOpen, setRenameOpen] = useState(false);
+    const [renameValue, setRenameValue] = useState("");
+
+    const openRename = () => {
+        setRenameValue(me?.name ?? "");
+        setRenameOpen(true);
+    };
+
+    const handleRename = async () => {
+        const name = renameValue.trim();
+        if (!name || name === me?.name) {
+            setRenameOpen(false);
+            return;
+        }
+        try {
+            await renamePlayer({ name }).unwrap();
+            toast.success(`Renamed to ${name}`);
+            setRenameOpen(false);
+        } catch {
+            toast.error("Couldn't rename your player. Try again.");
+        }
+    };
 
     useEffect(() => {
         const initial = getUserLeagues();
@@ -287,6 +314,37 @@ export default function Profile() {
                             <Clock size={12} />
                             Last signed in {lastSignedIn}
                         </div>
+                    )}
+                </section>
+
+                <section
+                    className="bg-card rounded-2xl border border-border/50 p-5 animate-slide-up"
+                    style={{ animationDelay: "90ms" }}
+                >
+                    <div className="flex items-center gap-2 mb-3">
+                        <Gamepad2 size={14} className="text-muted-foreground" />
+                        <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wide">
+                            Player
+                        </h2>
+                    </div>
+                    {me ? (
+                        <div className="flex items-center gap-3">
+                            <div className="flex-1 min-w-0">
+                                <p className="font-bold truncate">{me.name}</p>
+                                <p className="text-xs text-muted-foreground tabular-nums">{me.elo} ELO</p>
+                            </div>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                className="cursor-pointer transition-transform active:scale-95"
+                                onClick={openRename}
+                            >
+                                <Pencil size={14} />
+                                Rename
+                            </Button>
+                        </div>
+                    ) : (
+                        <p className="text-sm text-muted-foreground">No player linked.</p>
                     )}
                 </section>
 
@@ -534,6 +592,47 @@ export default function Profile() {
                             onClick={handleLeave}
                         >
                             Leave league
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={renameOpen} onOpenChange={setRenameOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Rename player</DialogTitle>
+                        <DialogDescription>
+                            This changes your player name everywhere — leaderboards, matches and stats.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <input
+                        value={renameValue}
+                        onChange={(e) => setRenameValue(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                                e.preventDefault();
+                                handleRename();
+                            }
+                        }}
+                        autoFocus
+                        placeholder="Player name"
+                        className="w-full px-3 py-2.5 rounded-xl bg-background border border-border text-sm outline-none focus:border-primary"
+                    />
+                    <DialogFooter>
+                        <Button
+                            variant="outline"
+                            className="cursor-pointer"
+                            onClick={() => setRenameOpen(false)}
+                        >
+                            Cancel
+                        </Button>
+                        <Button
+                            className="cursor-pointer"
+                            disabled={!renameValue.trim() || renaming}
+                            onClick={handleRename}
+                        >
+                            {renaming && <Loader2 size={16} className="animate-spin" />}
+                            Save
                         </Button>
                     </DialogFooter>
                 </DialogContent>

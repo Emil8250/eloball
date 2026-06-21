@@ -17,10 +17,11 @@ import {Toaster} from "sonner";
 import {Trophy, Calendar, Swords, BarChart3, Loader2, User} from "lucide-react";
 import PlayerProvider from "~/context/PlayerContext/PlayerProvider";
 import {Auth0Provider, useAuth0} from "@auth0/auth0-react";
-import {setTokenGetter} from "../apis/foosball/foosball";
+import {setTokenGetter, useGetMeQuery} from "../apis/foosball/foosball";
 import {useEffect} from "react";
 import {setForbidden} from "~/authSlice";
 import {ForbiddenPage} from "~/components/ForbiddenPage";
+import {Onboarding} from "~/components/Onboarding";
 
 const AUTH0_AUDIENCE = "https://api.billigeterninger.dk/";
 
@@ -127,6 +128,10 @@ function AppShell({children}: { children: React.ReactNode }) {
     const {pathname} = useLocation();
     const hasFab = pathname === "/" || pathname === "/seasons";
 
+    // Is this account linked to a player yet? (404 → needs onboarding)
+    const {isLoading: meLoading, error: meError} = useGetMeQuery(undefined, {skip: !isAuthenticated});
+    const needsOnboarding = (meError as {status?: number} | undefined)?.status === 404;
+
     useEffect(() => {
         if (!isAuthenticated) dispatch(setForbidden(false));
     }, [isAuthenticated, dispatch]);
@@ -151,6 +156,18 @@ function AppShell({children}: { children: React.ReactNode }) {
 
     if (forbidden) {
         return <ForbiddenPage/>;
+    }
+
+    if (meLoading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <Loader2 size={32} className="animate-spin text-muted-foreground"/>
+            </div>
+        );
+    }
+
+    if (needsOnboarding) {
+        return <Onboarding/>;
     }
 
     return (

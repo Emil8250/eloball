@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth0 } from "@auth0/auth0-react";
 import { toast } from "sonner";
 import { Check, Loader2, LogOut, Search, UserPlus } from "lucide-react";
@@ -19,6 +19,13 @@ export function Onboarding() {
     const [query, setQuery] = useState("");
     const [showCreate, setShowCreate] = useState(false);
     const [newName, setNewName] = useState(user?.name ?? user?.nickname ?? "");
+
+    const noPlayersToClaim = !isLoading && (players?.length ?? 0) === 0;
+
+    // Nothing to claim → go straight to creating a player.
+    useEffect(() => {
+        if (noPlayersToClaim) setShowCreate(true);
+    }, [noPlayersToClaim]);
 
     const busy = claiming || creating;
 
@@ -59,9 +66,13 @@ export function Onboarding() {
                 <div className="flex flex-col items-center text-center gap-2">
                     <img src="/logo.png" alt="Eloball" className="h-auto w-44 object-contain dark:hidden" />
                     <img src="/logo-dark.png" alt="Eloball" className="h-auto w-44 object-contain hidden dark:block" />
-                    <h1 className="text-xl font-extrabold mt-2">Claim your player</h1>
+                    <h1 className="text-xl font-extrabold mt-2">
+                        {showCreate ? "Create your player" : "Claim your player"}
+                    </h1>
                     <p className="text-sm text-muted-foreground max-w-xs">
-                        Pick the player that's you so your matches and ELO link to your account — or create a new one.
+                        {showCreate
+                            ? "Choose the name you'll appear as on the leaderboard and in matches."
+                            : "Pick the player that's you so your matches and ELO link to your account — or create a new one."}
                     </p>
                 </div>
 
@@ -146,13 +157,15 @@ export function Onboarding() {
                             {creating && <Loader2 size={16} className="animate-spin" />}
                             Create player
                         </Button>
-                        <button
-                            type="button"
-                            onClick={() => setShowCreate(false)}
-                            className="text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                        >
-                            ← Back to claiming
-                        </button>
+                        {!noPlayersToClaim && (
+                            <button
+                                type="button"
+                                onClick={() => setShowCreate(false)}
+                                className="text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+                            >
+                                ← Back to claiming
+                            </button>
+                        )}
                     </div>
                 )}
             </div>

@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useGetActiveSeasonQuery, useGetSeasonLeaderboardQuery, useGetPlayersQuery, useGetPlayerMatchesQuery } from "../../apis/foosball/foosball";
 import type { LeaderboardEntry } from "../../apis/foosball/types";
 import { Link } from "react-router";
@@ -10,19 +11,44 @@ const podiumColors = [
   "from-orange-400/20 to-amber-200/30 border-orange-400/50",
 ];
 
+function EloValue({ value, enabled }: { value: number; enabled: boolean }) {
+  const valueText = value.toString();
+
+  if (!enabled) {
+    return <>{valueText}</>;
+  }
+
+  return (
+    <>
+      {valueText.split(/(69)/g).map((part, index) =>
+        part === "69" ? (
+          <span
+            key={index}
+            className="inline-block bg-gradient-to-r from-red-500 via-yellow-400 via-green-400 via-blue-500 to-purple-500 bg-clip-text text-transparent"
+          >
+            {part}
+          </span>
+        ) : (
+          <span key={index}>{part}</span>
+        )
+      )}
+    </>
+  );
+}
+
 export function meta() {
   return [{ title: "Eloball — Leaderboard" }];
 }
 
-export default function Leaderboard() {
+export default function Leaderboard() {  
   const { data: season, isLoading: seasonLoading } = useGetActiveSeasonQuery();
   const { data: players, isLoading: playersLoading } = useGetPlayersQuery();
   const { data: seasonLeaderboard, isLoading: lbLoading } = useGetSeasonLeaderboardQuery(
     season?.id ?? 0,
     { skip: !season?.id || season?.isActive }
-  );
+  );  
   const { data: allPlayerMatches } = useGetPlayerMatchesQuery();
-
+  const [seasonNameClickCount, setSeasonNameClickCount] = useState(0);
   const isLoading = seasonLoading || playersLoading || lbLoading;
 
   // For active season, build leaderboard from players who have matches this season
@@ -110,14 +136,24 @@ export default function Leaderboard() {
     : Math.floor((leaderboard?.reduce((sum, e) => sum + e.matchesPlayed, 0) ?? 0) / 2);
   const startDate = new Date(season.startDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 
+const isEasterEggActive = seasonNameClickCount >= 10;
+
+const handleSeasonNameClick = () => {
+  setSeasonNameClickCount(currentCount => currentCount + 1);
+};
+
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
       {/* Season Header */}
       <div className="text-center mb-8">
-        <div className="inline-flex items-center gap-2 bg-primary/10 text-primary rounded-full px-4 py-1.5 text-sm font-bold mb-3">
+        <button
+          type="button"
+          onClick={handleSeasonNameClick}
+          className="inline-flex items-center gap-2 bg-primary/10 text-primary rounded-full px-4 py-1.5 text-sm font-bold mb-3"
+        >
           <Trophy size={14} />
           {season.name}
-        </div>
+        </button>
         <div className="flex justify-center gap-6 text-sm text-muted-foreground">
           <span className="flex items-center gap-1">
             <Gamepad2 size={14} />
@@ -146,7 +182,8 @@ export default function Leaderboard() {
                 <span className="text-2xl mb-1">{medals[1]}</span>
                 <p className="font-extrabold text-sm truncate max-w-full">{entry.playerName}</p>
                 <p className="text-xl font-black text-primary tabular-nums">
-                  {entry.finalElo ?? entry.startingElo}
+                  {/* {entry.finalElo ?? entry.startingElo} */}
+                  <EloValue value={entry.finalElo ?? entry.startingElo} enabled={isEasterEggActive} />
                 </p>
                 {entry.matchesPlayed > 0 && (
                   <div className="text-[10px] text-muted-foreground mt-1">
@@ -169,7 +206,7 @@ export default function Leaderboard() {
                 <span className="text-3xl mb-1">{medals[0]}</span>
                 <p className="font-extrabold text-lg truncate max-w-full">{entry.playerName}</p>
                 <p className="text-2xl font-black text-primary tabular-nums">
-                  {entry.finalElo ?? entry.startingElo}
+                  <EloValue value={entry.finalElo ?? entry.startingElo} enabled={isEasterEggActive} />
                 </p>
                 {entry.matchesPlayed > 0 && (
                   <div className="flex gap-2 text-xs text-muted-foreground mt-1">
@@ -193,7 +230,7 @@ export default function Leaderboard() {
                 <span className="text-2xl mb-1">{medals[2]}</span>
                 <p className="font-extrabold text-sm truncate max-w-full">{entry.playerName}</p>
                 <p className="text-xl font-black text-primary tabular-nums">
-                  {entry.finalElo ?? entry.startingElo}
+                  <EloValue value={entry.finalElo ?? entry.startingElo} enabled={isEasterEggActive} />
                 </p>
                 {entry.matchesPlayed > 0 && (
                   <div className="text-[10px] text-muted-foreground mt-1">
@@ -229,7 +266,7 @@ export default function Leaderboard() {
                 )}
               </div>
               <div className="text-right">
-                <p className="text-lg font-extrabold tabular-nums">{entry.finalElo ?? entry.startingElo}</p>
+                <p className="text-lg font-extrabold tabular-nums"><EloValue value={entry.finalElo ?? entry.startingElo} enabled={isEasterEggActive} /></p>                
               </div>
             </Link>
           ))}

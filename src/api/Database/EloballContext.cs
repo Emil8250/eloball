@@ -25,6 +25,8 @@ public partial class EloballContext : DbContext
 
     public virtual DbSet<Season> Seasons { get; set; }
 
+    public virtual DbSet<UserProfile> UserProfiles { get; set; }
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
     }
@@ -148,6 +150,34 @@ public partial class EloballContext : DbContext
             entity.Property(e => e.StartDate)
                 .HasColumnType("datetime")
                 .HasColumnName("startDate");
+        });
+
+        modelBuilder.Entity<UserProfile>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK_userProfile");
+
+            entity.ToTable("userProfile");
+
+            entity.HasIndex(e => e.Auth0Sub, "UQ_userProfile_auth0Sub").IsUnique();
+            entity.HasIndex(e => e.PlayerId, "UX_userProfile_playerId")
+                .IsUnique()
+                .HasFilter("[playerId] IS NOT NULL");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.Auth0Sub).HasMaxLength(255).HasColumnName("auth0Sub");
+            entity.Property(e => e.Email).HasMaxLength(320).HasColumnName("email");
+            entity.Property(e => e.PlayerId).HasColumnName("playerId");
+            entity.Property(e => e.CreatedDateTime)
+                .HasDefaultValueSql("(sysdatetime())")
+                .HasColumnName("createdDateTime");
+            entity.Property(e => e.UpdatedDateTime)
+                .HasDefaultValueSql("(sysdatetime())")
+                .HasColumnName("updatedDateTime");
+
+            entity.HasOne(d => d.Player).WithMany()
+                .HasForeignKey(d => d.PlayerId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_userProfile_player");
         });
 
         OnModelCreatingPartial(modelBuilder);

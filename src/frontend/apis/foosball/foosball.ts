@@ -42,11 +42,32 @@ const baseQueryWithMock: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQuery
 export const foosballApi = createApi({
     reducerPath: 'foosballApi',
     baseQuery: baseQueryWithMock,
-    tagTypes: ["match", "season"],
+    tagTypes: ["match", "season", "me"],
     endpoints: (builder) => ({
         getPlayers: builder.query<Player[], void>({
             query: () => 'player',
             providesTags: ["match"]
+        }),
+        // The player linked to the current account; 404 → needs onboarding.
+        getMe: builder.query<Player, void>({
+            query: () => 'player/me',
+            providesTags: ["me"]
+        }),
+        getUnclaimedPlayers: builder.query<Player[], void>({
+            query: () => 'player/unclaimed',
+            providesTags: ["me"]
+        }),
+        claimPlayer: builder.mutation<Player, { playerId: number; email?: string }>({
+            query: (body) => ({ url: 'player/claim', method: 'POST', body }),
+            invalidatesTags: ["me", "match"]
+        }),
+        createPlayer: builder.mutation<Player, { name: string; email?: string }>({
+            query: (body) => ({ url: 'player', method: 'POST', body }),
+            invalidatesTags: ["me", "match"]
+        }),
+        renamePlayer: builder.mutation<Player, { name: string }>({
+            query: (body) => ({ url: 'player/me', method: 'PUT', body }),
+            invalidatesTags: ["me", "match"]
         }),
         postMatch: builder.mutation<void, SubmitMatch>({
             query: (match) => ({
@@ -89,6 +110,11 @@ export const foosballApi = createApi({
 
 export const {
     useGetPlayersQuery,
+    useGetMeQuery,
+    useGetUnclaimedPlayersQuery,
+    useClaimPlayerMutation,
+    useCreatePlayerMutation,
+    useRenamePlayerMutation,
     usePostMatchMutation,
     useGetSeasonsQuery,
     useGetActiveSeasonQuery,

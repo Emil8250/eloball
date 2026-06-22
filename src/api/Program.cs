@@ -73,6 +73,17 @@ builder.Services.AddAuthorization(options =>
 
 var app = builder.Build();
 
+// Apply pending SQL migrations on startup (same scripts as scripts/db.sh).
+// Disable with "RunMigrationsOnStartup": false (e.g. if migrations are run out-of-band).
+if (app.Configuration.GetValue("RunMigrationsOnStartup", true))
+{
+    api.MigrationRunner.Run(
+        builder.Configuration.GetConnectionString("DefaultConnection")
+            ?? throw new InvalidOperationException("DefaultConnection is not configured."),
+        Path.Combine(AppContext.BaseDirectory, "migrations"),
+        app.Logger);
+}
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {

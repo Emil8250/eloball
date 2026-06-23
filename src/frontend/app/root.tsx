@@ -14,7 +14,7 @@ import "../index.css";
 import {store, type RootState} from '~/store'
 import {Provider, useDispatch, useSelector} from "react-redux";
 import {Toaster} from "sonner";
-import {Trophy, Calendar, Swords, BarChart3, Loader2, User} from "lucide-react";
+import {Trophy, Calendar, Swords, BarChart3, Loader2, User, Check, X, TriangleAlert, Info} from "lucide-react";
 import PlayerProvider from "~/context/PlayerContext/PlayerProvider";
 import {Auth0Provider, useAuth0} from "@auth0/auth0-react";
 import {setTokenGetter, useGetMeQuery} from "../apis/foosball/foosball";
@@ -24,6 +24,36 @@ import {ForbiddenPage} from "~/components/ForbiddenPage";
 import {Onboarding} from "~/components/Onboarding";
 
 const AUTH0_AUDIENCE = "https://api.billigeterninger.dk/";
+
+// Circle-in-a-pill icons per toast type (rendered inside the accent-colored badge)
+const toastIcons = {
+    success: <Check size={18} strokeWidth={3}/>,
+    error: <X size={18} strokeWidth={3}/>,
+    warning: <TriangleAlert size={18} strokeWidth={2.75}/>,
+    info: <Info size={18} strokeWidth={2.75}/>,
+    loading: <Loader2 size={18} className="animate-spin"/>,
+};
+
+// Glassy progressive-blur pill styling. `unstyled` lets our classes fully own the look
+// (no fighting Sonner's injected CSS). Per-type classes set --toast-accent, which drives
+// the icon-circle background (see .eloball-toast rules in index.css).
+const toastOptions = {
+    unstyled: true,
+    classNames: {
+        toast:
+            "eloball-toast group relative flex items-center gap-3 w-fit max-w-[calc(100vw-2rem)] rounded-full py-2 pl-2 pr-5 font-sans text-foreground bg-white/65 dark:bg-neutral-900/55 border border-white/60 dark:border-white/10 [--toast-accent:#737373]",
+        icon:
+            "eloball-toast-icon shrink-0 grid place-items-center h-8 w-8 rounded-full text-white bg-[var(--toast-accent)] [&>svg]:h-[18px] [&>svg]:w-[18px]",
+        content: "flex flex-col gap-0.5 py-0.5",
+        title: "text-[13px] font-extrabold leading-tight",
+        description: "text-xs font-semibold text-muted-foreground leading-snug",
+        success: "[--toast-accent:#10b981]",
+        error: "[--toast-accent:#ef4444]",
+        warning: "[--toast-accent:#f59e0b]",
+        info: "[--toast-accent:#0ea5e9]",
+        loading: "[--toast-accent:#8b5cf6]",
+    },
+};
 
 export const links: Route.LinksFunction = () => [
     {rel: "preconnect", href: "https://fonts.googleapis.com"},
@@ -263,6 +293,9 @@ export function Layout({children}: { children: React.ReactNode }) {
         <Auth0Provider
             domain="dev-82kcp8l6j263vhyk.eu.auth0.com"
             clientId="26B0Dqdn2tZ3QZl3fB6xfZQKjGDnY41W"
+            cacheLocation="localstorage"
+            useRefreshTokens={true}
+            useRefreshTokensFallback={true}
             authorizationParams={{
                 redirect_uri: import.meta.env.VITE_DOMAIN,
                 audience: AUTH0_AUDIENCE,
@@ -279,7 +312,23 @@ export function Layout({children}: { children: React.ReactNode }) {
             <Provider store={store}>
                 <PlayerProvider>
                     <AppShell>{children}</AppShell>
-                    <Toaster richColors position="top-center"/>
+                    {/* Desktop: below the top nav. Mobile: above the bottom tab bar.
+                        Two instances because Sonner can't flip top/bottom responsively. */}
+                    <Toaster
+                        position="top-center"
+                        offset="88px"
+                        className="eloball-hide-mobile"
+                        icons={toastIcons}
+                        toastOptions={toastOptions}
+                    />
+                    <Toaster
+                        position="bottom-center"
+                        offset="84px"
+                        mobileOffset="84px"
+                        className="eloball-hide-desktop"
+                        icons={toastIcons}
+                        toastOptions={toastOptions}
+                    />
                 </PlayerProvider>
             </Provider>
             <ScrollRestoration/>

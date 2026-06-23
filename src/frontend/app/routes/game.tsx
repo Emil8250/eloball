@@ -1,10 +1,10 @@
 import { useGetPlayersQuery, usePostMatchMutation } from "../../apis/foosball/foosball";
 import type { Match, PlayerTeam } from "../../apis/foosball/types";
 import usePlayerContext from "~/context/PlayerContext/usePlayerContext";
-import { useCallback, useEffect } from "react";
-import { toast } from "sonner";
+import { useCallback, useEffect, useState } from "react";
+import { toast } from "~/lib/toast";
 import { Button } from "~/components/ui/button";
-import { ArrowLeftRight, Scale, X, Gamepad2, Trophy } from "lucide-react";
+import { ArrowLeftRight, Scale, X, Gamepad2, Trophy, Egg } from "lucide-react";
 import {useAuth0} from "@auth0/auth0-react";
 
 export function meta() {
@@ -31,11 +31,13 @@ export default function Game() {
   const { data: players, isLoading: playersLoading } = useGetPlayersQuery();
   const { players: selected, addPlayer, removePlayer } = usePlayerContext();
   const [postMatch, { isLoading: submitting, isSuccess }] = usePostMatchMutation();
+  const [isEgg, setIsEgg] = useState(false);
 
   useEffect(() => {
     if (isSuccess) {
-      toast.success("Match recorded! ELO updated.");
+      toast.success(isEgg ? "🥚 Egg recorded! 10-0 — brutal." : "Match recorded! ELO updated.");
       selected.forEach(p => removePlayer(p.player.id));
+      setIsEgg(false);
     }
   }, [isSuccess]);
 
@@ -104,7 +106,7 @@ export default function Game() {
       teamId: p.team
     }));
     if (canSubmit) {
-      postMatch({ matches, teamWonId });
+      postMatch({ matches, teamWonId, egg: isEgg });
     }
   };
 
@@ -231,6 +233,22 @@ export default function Game() {
           </Button>
         </div>
       </div>
+
+      {/* Egg toggle — flag a 10-0 shutout */}
+      <button
+        type="button"
+        onClick={() => setIsEgg(v => !v)}
+        disabled={submitting}
+        aria-pressed={isEgg}
+        className={`w-full flex items-center justify-center gap-2 rounded-2xl py-3 mb-3 text-sm font-extrabold border-2 transition-all active:scale-95 cursor-pointer ${
+          isEgg
+            ? "bg-amber-400 border-amber-500 text-amber-950 shadow-md shadow-amber-400/30"
+            : "bg-card border-border text-muted-foreground hover:border-amber-400/50"
+        }`}
+      >
+        <Egg size={18} className={isEgg ? "text-amber-950" : "text-amber-500"} />
+        {isEgg ? "Egg! 10–0 shutout" : "Mark as Egg (10–0)"}
+      </button>
 
       {/* Post Match — Red Won / Blue Won */}
       <div className="grid grid-cols-2 gap-3 mb-8">

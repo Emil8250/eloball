@@ -7,6 +7,8 @@ export interface PlayerStats {
   losses: number;
   matches: number;
   winRate: number;
+  eggsGiven: number;
+  eggsReceived: number;
   teammates: Record<string, { games: number; wins: number }>;
   opponents: Record<string, { games: number; winsOver: number; lossesTo: number }>;
   streak: { type: "W" | "L"; count: number };
@@ -42,6 +44,8 @@ export function computePlayerStats(records: PlayerMatchRecord[], seasonId?: numb
           losses: 0,
           matches: 0,
           winRate: 0,
+          eggsGiven: 0,
+          eggsReceived: 0,
           teammates: {},
           opponents: {},
           streak: { type: "W", count: 0 },
@@ -54,6 +58,11 @@ export function computePlayerStats(records: PlayerMatchRecord[], seasonId?: numb
       if (won) s.wins++;
       else s.losses++;
       s.winRate = s.matches > 0 ? s.wins / s.matches : 0;
+
+      if (pm.match.egg) {
+        if (won) s.eggsGiven++;
+        else s.eggsReceived++;
+      }
 
       if (s.streak.type === (won ? "W" : "L")) {
         s.streak.count++;

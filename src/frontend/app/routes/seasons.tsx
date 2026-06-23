@@ -3,7 +3,7 @@ import { Link } from "react-router";
 import { Calendar, Crown, Trophy, ChevronRight, Gamepad2, TrendingUp } from "lucide-react";
 import type { LeaderboardEntry, Season } from "../../apis/foosball/types";
 import { useState } from "react";
-import { toast } from "sonner";
+import { toast } from "~/lib/toast";
 import { Button } from "~/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "~/components/ui/dialog";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";

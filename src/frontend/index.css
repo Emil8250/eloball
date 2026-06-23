@@ -135,3 +135,75 @@
 .animate-slide-up {
   animation: slide-up 0.4s ease-out both;
 }
+
+/* ── Toast notifications ── */
+/* Visual styling lives in the custom renderer (~/lib/toast). Here we only handle
+   responsive placement and give each toast slot a consistent width so the pill
+   inside can center itself. */
+
+/* Top toaster on desktop, bottom toaster on mobile. */
+@media (max-width: 767px) {
+  .eloball-hide-mobile { display: none !important; }
+}
+@media (min-width: 768px) {
+  .eloball-hide-desktop { display: none !important; }
+}
+
+[data-sonner-toast] {
+  width: var(--width);
+}
+
+/* Appear in place: cancel Sonner's slide transform AND its entry opacity fade.
+   We fade the pill ourselves (below) by ramping blur + background, never opacity,
+   so backdrop-filter isn't disabled mid-transition. Multi-toast stacking transforms
+   are left untouched; the front toast still fades out via Sonner's removal opacity. */
+[data-sonner-toast]:not([data-mounted='true']) {
+  --y: translateY(0) !important;
+  opacity: 1 !important;
+}
+[data-sonner-toast][data-removed='true'][data-front='true'][data-swipe-out='false'] {
+  --y: translateY(0) !important;
+}
+
+/* Glass pill — steady state. Background/border/blur animate in (see keyframes). */
+.eloball-pill {
+  background-color: rgba(255, 255, 255, 0.55);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  -webkit-backdrop-filter: blur(24px) saturate(1.8);
+  backdrop-filter: blur(24px) saturate(1.8);
+  animation: eloball-pill-in 260ms ease-out both;
+}
+.eloball-pill-blur {
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  animation: eloball-pill-blur-in 260ms ease-out both;
+}
+.eloball-pill-fade {
+  animation: eloball-pill-fade-in 220ms ease-out both;
+}
+
+@media (prefers-color-scheme: dark) {
+  .eloball-pill {
+    background-color: rgba(23, 23, 23, 0.45);
+    border-color: rgba(255, 255, 255, 0.1);
+  }
+}
+
+/* Fade by animating blur + alpha, NOT opacity, so the backdrop-filter stays live. */
+@keyframes eloball-pill-in {
+  from {
+    background-color: transparent;
+    border-color: transparent;
+    -webkit-backdrop-filter: blur(0) saturate(1);
+    backdrop-filter: blur(0) saturate(1);
+  }
+}
+@keyframes eloball-pill-blur-in {
+  from {
+    -webkit-backdrop-filter: blur(0);
+    backdrop-filter: blur(0);
+  }
+}
+@keyframes eloball-pill-fade-in {
+  from { opacity: 0; }
+}

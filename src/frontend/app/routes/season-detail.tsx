@@ -2,13 +2,55 @@ import { useMemo } from "react";
 import { useParams, Link } from "react-router";
 import { useGetSeasonQuery, useGetSeasonLeaderboardQuery, useGetPlayersQuery, useGetPlayerMatchesQuery } from "../../apis/foosball/foosball";
 import type { LeaderboardEntry } from "../../apis/foosball/types";
-import { computePlayerStats } from "~/lib/playerStats";
+import { computePlayerStats, classifyRank, PLACEMENT_GAMES } from "~/lib/playerStats";
 import { ArrowLeft, Calendar, Gamepad2, Trophy } from "lucide-react";
 
 const medals = ["🥇", "🥈", "🥉"];
 
 export function meta() {
   return [{ title: "Eloball — Season Details" }];
+}
+
+function SecondarySection({ title, entries, seasonId, mode }: {
+  title: string;
+  entries: LeaderboardEntry[];
+  seasonId: number;
+  mode: "inactive" | "calibrating";
+}) {
+  return (
+    <div className="bg-card rounded-2xl border border-border/50 overflow-hidden mt-4 opacity-60">
+      <div className="px-4 py-3 border-b border-border/50">
+        <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wide">{title}</h2>
+      </div>
+      <div className="divide-y divide-border/30">
+        {entries.map((entry, i) => (
+          <Link
+            to={`/stats?player=${entry.playerId}&season=${seasonId}`}
+            key={entry.playerId}
+            className="flex items-center gap-3 px-4 py-3 hover:bg-muted/30 transition-colors animate-slide-up cursor-pointer"
+            style={{ animationDelay: `${i * 40}ms` }}
+          >
+            <span className="w-8 text-center text-xs shrink-0 text-muted-foreground tabular-nums">
+              {mode === "calibrating" ? `${entry.matchesPlayed}/${PLACEMENT_GAMES}` : "💤"}
+            </span>
+            <div className="flex-1 min-w-0">
+              <p className="font-bold text-sm truncate">{entry.playerName}</p>
+              <p className="text-xs text-muted-foreground">
+                {entry.matchesWon}W / {entry.matchesPlayed - entry.matchesWon}L
+                <span className="mx-1.5">·</span>
+                {Math.round(entry.winRate * 100)}% WR
+                <span className="mx-1.5">·</span>
+                {entry.matchesPlayed} played
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="text-lg font-extrabold tabular-nums text-muted-foreground">{entry.finalElo ?? entry.startingElo}</p>
+            </div>
+          </Link>
+        ))}
+      </div>
+    </div>
+  );
 }
 
 export default function SeasonDetail() {
@@ -83,6 +125,24 @@ export default function SeasonDetail() {
       .map(pm => pm.matchId)
   ).size;
 
+  // Split into ranked standings vs inactive / calibrating (CS-style). Only active
+  // players make the final standings; activity is measured against the season's end
+  // (or now, while it is still active).
+  const refTime = season.isActive
+    ? Date.now()
+    : season.endDate ? new Date(season.endDate).getTime() : Date.now();
+  const standings: LeaderboardEntry[] = [];
+  const inactivePlayers: LeaderboardEntry[] = [];
+  const calibratingPlayers: LeaderboardEntry[] = [];
+  for (const entry of leaderboard ?? []) {
+    if (entry.matchesPlayed === 0) continue; // non-participants don't appear
+    const status = classifyRank(playerStats.get(entry.playerId), refTime);
+    if (status === "calibrating") calibratingPlayers.push(entry);
+    else if (status === "inactive") inactivePlayers.push(entry);
+    else standings.push(entry);
+  }
+  const totalParticipants = standings.length + inactivePlayers.length + calibratingPlayers.length;
+
   // Group playerMatches by matchId for this season, then take latest 15, grouped by date
   const matchesByDate = (() => {
     if (!allPlayerMatches) return [];
@@ -141,7 +201,7 @@ export default function SeasonDetail() {
           </span>
           <span className="flex items-center gap-1">
             <Trophy size={14} />
-            {leaderboard?.length ?? 0} players
+            {totalParticipants} players
           </span>
           {totalMatches > 0 && (
             <span className="flex items-center gap-1">
@@ -152,14 +212,14 @@ export default function SeasonDetail() {
         </div>
       </div>
 
-      {/* Full Leaderboard Table */}
-      {leaderboard && leaderboard.length > 0 && (
+      {/* Final standings — active/ranked players only */}
+      {standings.length > 0 && (
         <div className="bg-card rounded-2xl border border-border/50 overflow-hidden">
           <div className="px-4 py-3 border-b border-border/50">
-            <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wide">Leaderboard</h2>
+            <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wide">Standings</h2>
           </div>
           <div className="divide-y divide-border/30">
-            {leaderboard.map((entry, i) => {
+            {standings.map((entry, i) => {
               const finalElo = entry.finalElo ?? entry.startingElo;
               const eloChange = finalElo - entry.startingElo;
               return (
@@ -175,17 +235,11 @@ export default function SeasonDetail() {
                   <div className="flex-1 min-w-0">
                     <p className="font-bold text-sm truncate">{entry.playerName}</p>
                     <p className="text-xs text-muted-foreground">
-                      {entry.matchesPlayed > 0 ? (
-                        <>
-                          {entry.matchesWon}W / {entry.matchesPlayed - entry.matchesWon}L
-                          <span className="mx-1.5">·</span>
-                          {Math.round(entry.winRate * 100)}% WR
-                          <span className="mx-1.5">·</span>
-                          {entry.matchesPlayed} played
-                        </>
-                      ) : (
-                        "No matches recorded"
-                      )}
+                      {entry.matchesWon}W / {entry.matchesPlayed - entry.matchesWon}L
+                      <span className="mx-1.5">·</span>
+                      {Math.round(entry.winRate * 100)}% WR
+                      <span className="mx-1.5">·</span>
+                      {entry.matchesPlayed} played
                     </p>
                   </div>
                   <div className="text-right">
@@ -201,6 +255,26 @@ export default function SeasonDetail() {
             })}
           </div>
         </div>
+      )}
+
+      {/* Calibrating — fewer than the placement-game minimum */}
+      {calibratingPlayers.length > 0 && (
+        <SecondarySection
+          title="Calibrating"
+          entries={calibratingPlayers}
+          seasonId={season.id}
+          mode="calibrating"
+        />
+      )}
+
+      {/* Inactive — not in the final standings (no recent activity) */}
+      {inactivePlayers.length > 0 && (
+        <SecondarySection
+          title={season.isActive ? "Inactive — play to rejoin" : "Inactive — not in standings"}
+          entries={inactivePlayers}
+          seasonId={season.id}
+          mode="inactive"
+        />
       )}
 
       {/* Recent Matches */}

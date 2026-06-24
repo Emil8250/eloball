@@ -1,7 +1,8 @@
-import { useGetSeasonsQuery, useGetSeasonLeaderboardQuery, useGetActiveSeasonQuery, useEndSeasonMutation, useCreateSeasonMutation } from "../../apis/foosball/foosball";
+import { useGetSeasonsQuery, useGetSeasonLeaderboardQuery, useGetActiveSeasonQuery, useGetPlayerMatchesQuery, useEndSeasonMutation, useCreateSeasonMutation } from "../../apis/foosball/foosball";
 import { Link } from "react-router";
 import { Calendar, Crown, Trophy, ChevronRight, Gamepad2, TrendingUp } from "lucide-react";
-import type { LeaderboardEntry, Season } from "../../apis/foosball/types";
+import type { Season } from "../../apis/foosball/types";
+import { computePlayerStats, classifyRank, type RankStatus } from "~/lib/playerStats";
 import { useState } from "react";
 import { toast } from "~/lib/toast";
 import { Button } from "~/components/ui/button";
@@ -19,15 +20,29 @@ const chartColors = [
 
 function SeasonCard({ season }: { season: Season }) {
   const { data: leaderboard } = useGetSeasonLeaderboardQuery(season.id);
+  const { data: allPlayerMatches } = useGetPlayerMatchesQuery();
 
   const startDate = new Date(season.startDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
   const endDate = season.endDate
     ? new Date(season.endDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })
     : "Present";
 
-  const winner = leaderboard?.[0];
-  const podium = leaderboard?.slice(0, 3) ?? [];
-  const totalMatches = leaderboard?.reduce((sum, e) => sum + e.matchesPlayed, 0) ?? 0;
+  // Champion/podium reflect the final standings (active players only), consistent
+  // with the season detail page. Activity is measured against the season's close.
+  const refTime = season.endDate ? new Date(season.endDate).getTime() : Date.now();
+  const stats = computePlayerStats(allPlayerMatches ?? [], season.id);
+  const activeStandings = (leaderboard ?? []).filter(
+    e => classifyRank(stats.get(e.playerId), refTime) === "active"
+  );
+  const winner = activeStandings[0];
+  const podium = activeStandings.slice(0, 3);
+
+  const playerCount = leaderboard?.length ?? 0;
+  const totalMatches = new Set(
+    (allPlayerMatches ?? [])
+      .filter(pm => pm.match.seasonId === season.id)
+      .map(pm => pm.matchId)
+  ).size;
 
   return (
     <Link
@@ -60,12 +75,12 @@ function SeasonCard({ season }: { season: Season }) {
       <div className="flex items-center gap-4 text-xs text-muted-foreground">
         <span className="flex items-center gap-1">
           <Trophy size={12} />
-          {leaderboard?.length ?? 0} players
+          {playerCount} players
         </span>
         {totalMatches > 0 && (
           <span className="flex items-center gap-1">
             <Gamepad2 size={12} />
-            {Math.round(totalMatches / 2)} matches
+            {totalMatches} matches
           </span>
         )}
       </div>
@@ -119,9 +134,38 @@ function ActiveSeasonBanner({ season }: { season: Season }) {
   );
 }
 
+function EloTooltip({ active, payload, label, statuses }: {
+  active?: boolean;
+  payload?: { dataKey?: string | number; value?: number; color?: string }[];
+  label?: string;
+  statuses: Record<string, Record<string, RankStatus>>;
+}) {
+  if (!active || !payload?.length) return null;
+  const seasonStatuses = statuses[label ?? ""] ?? {};
+  return (
+    <div className="rounded-xl border border-border bg-card p-3 text-xs shadow-md">
+      <p className="font-bold mb-1.5">{label}</p>
+      <div className="space-y-0.5">
+        {payload.map(p => {
+          const name = String(p.dataKey);
+          const st = seasonStatuses[name];
+          const tag = st === "inactive" ? " (inactive)" : st === "calibrating" ? " (calibrating)" : "";
+          return (
+            <p key={name} style={{ color: p.color }} className={tag ? "opacity-60" : ""}>
+              {name}: {p.value}
+              {tag && <span className="font-semibold">{tag}</span>}
+            </p>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function EloHistoryChart({ seasons, pastSeasons }: { seasons: Season[]; pastSeasons: Season[] }) {
   // Fetch leaderboards for all past seasons
   const leaderboardQueries = pastSeasons.map(s => useGetSeasonLeaderboardQuery(s.id));
+  const { data: allPlayerMatches } = useGetPlayerMatchesQuery();
   const allLoaded = leaderboardQueries.every(q => q.data !== undefined);
 
   if (!allLoaded || pastSeasons.length < 1) return null;
@@ -148,6 +192,19 @@ function EloHistoryChart({ seasons, pastSeasons }: { seasons: Season[]; pastSeas
     return point;
   });
 
+  // Per-season rank status (active/inactive/calibrating) for tooltip annotations.
+  const statuses: Record<string, Record<string, RankStatus>> = {};
+  orderedPastSeasons.forEach((season, i) => {
+    const lb = orderedQueries[i].data ?? [];
+    const stats = computePlayerStats(allPlayerMatches ?? [], season.id);
+    const refTime = season.endDate ? new Date(season.endDate).getTime() : Date.now();
+    const map: Record<string, RankStatus> = {};
+    for (const e of lb) {
+      map[e.playerName] = classifyRank(stats.get(e.playerId), refTime);
+    }
+    statuses[season.name] = map;
+  });
+
   if (chartData.length < 1) return null;
 
   return (
@@ -161,14 +218,7 @@ function EloHistoryChart({ seasons, pastSeasons }: { seasons: Season[]; pastSeas
           <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
           <XAxis dataKey="name" tick={{ fontSize: 11 }} />
           <YAxis domain={['dataMin - 30', 'dataMax + 30']} tick={{ fontSize: 11 }} />
-          <Tooltip
-            contentStyle={{
-              backgroundColor: "var(--card)",
-              border: "1px solid var(--border)",
-              borderRadius: "12px",
-              fontSize: "12px",
-            }}
-          />
+          <Tooltip content={<EloTooltip statuses={statuses} />} />
           {allPlayers.map((name, i) => (
             <Line
               key={name}

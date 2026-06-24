@@ -11,7 +11,7 @@ public class MatchController(EloballContext context) : ControllerBase
 {
     public record MatchRecord(int PlayerId, int TeamId);
 
-    public record MatchRecordSubmit(MatchRecord[] Matches, int TeamWonId);
+    public record MatchRecordSubmit(MatchRecord[] Matches, int TeamWonId, bool Egg = false);
     [HttpPost(Name = "PostMatch")]
     public async Task Post([FromBody] MatchRecordSubmit matchRecordSubmit)
     {
@@ -21,6 +21,7 @@ public class MatchController(EloballContext context) : ControllerBase
         var newMatch = new Match()
         {
             PlayerWonId = matchRecordSubmit.TeamWonId,
+            Egg = matchRecordSubmit.Egg,
             SeasonId = activeSeason?.Id
         };
         var addedMatch = context.Matches.Add(newMatch);

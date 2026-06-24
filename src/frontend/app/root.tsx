@@ -25,6 +25,10 @@ import {Onboarding} from "~/components/Onboarding";
 
 const AUTH0_AUDIENCE = "https://api.billigeterninger.dk/";
 
+// Toasts use a custom renderer (see ~/lib/toast). Sonner here is only the
+// positioning/animation engine; the visual is fully our own JSX.
+const toasterWidth = { "--width": "min(420px, calc(100vw - 2rem))" } as React.CSSProperties;
+
 export const links: Route.LinksFunction = () => [
     {rel: "preconnect", href: "https://fonts.googleapis.com"},
     {
@@ -263,6 +267,9 @@ export function Layout({children}: { children: React.ReactNode }) {
         <Auth0Provider
             domain="dev-82kcp8l6j263vhyk.eu.auth0.com"
             clientId="26B0Dqdn2tZ3QZl3fB6xfZQKjGDnY41W"
+            cacheLocation="localstorage"
+            useRefreshTokens={true}
+            useRefreshTokensFallback={true}
             authorizationParams={{
                 redirect_uri: import.meta.env.VITE_DOMAIN,
                 audience: AUTH0_AUDIENCE,
@@ -279,7 +286,21 @@ export function Layout({children}: { children: React.ReactNode }) {
             <Provider store={store}>
                 <PlayerProvider>
                     <AppShell>{children}</AppShell>
-                    <Toaster richColors position="top-center"/>
+                    {/* Desktop: below the top nav. Mobile: above the bottom tab bar.
+                        Two instances because Sonner can't flip top/bottom responsively. */}
+                    <Toaster
+                        position="top-center"
+                        offset="88px"
+                        className="eloball-hide-mobile"
+                        style={toasterWidth}
+                    />
+                    <Toaster
+                        position="bottom-center"
+                        offset="84px"
+                        mobileOffset="84px"
+                        className="eloball-hide-desktop"
+                        style={toasterWidth}
+                    />
                 </PlayerProvider>
             </Provider>
             <ScrollRestoration/>

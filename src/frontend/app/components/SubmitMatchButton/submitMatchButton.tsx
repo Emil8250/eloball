@@ -11,7 +11,7 @@ import { usePostMatchMutation } from "apis/foosball/foosball";
 import {useCallback, useEffect} from "react";
 import type { Match, PlayerTeam } from "apis/foosball/types";
 import usePlayerContext from "~/context/PlayerContext/usePlayerContext";
-import { toast } from "sonner";
+import { toast } from "~/lib/toast";
 
 export function SubmitMatchButton() {
     const { players, addPlayer, removePlayer } = usePlayerContext();

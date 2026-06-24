@@ -111,6 +111,7 @@ export default function Leaderboard() {
         id: pms[0].matchId,
         playerWonId: pms[0].match.playerWonId,
         createdDateTime: pms[0].match.createdDateTime,
+        egg: pms[0].match.egg,
         players: pms,
       }))
       .sort((a, b) => new Date(b.createdDateTime).getTime() - new Date(a.createdDateTime).getTime())
@@ -129,6 +130,18 @@ export default function Leaderboard() {
       }
     }
     return byDate;
+  })();
+
+  // Eggs delivered (won a 10-0 shutout) per player, this season
+  const eggsByPlayer = (() => {
+    const map = new Map<number, number>();
+    if (!allPlayerMatches) return map;
+    for (const pm of allPlayerMatches) {
+      if (pm.match.seasonId === season.id && pm.match.egg && pm.team === pm.match.playerWonId) {
+        map.set(pm.playerId, (map.get(pm.playerId) ?? 0) + 1);
+      }
+    }
+    return map;
   })();
 
   const matchCount = season.isActive
@@ -181,6 +194,9 @@ const handleSeasonNameClick = () => {
               >
                 <span className="text-2xl mb-1">{medals[1]}</span>
                 <p className="font-extrabold text-sm truncate max-w-full">{entry.playerName}</p>
+                {(eggsByPlayer.get(entry.playerId) ?? 0) > 0 && (
+                  <span className="text-[11px] font-bold leading-none mt-0.5" title="Eggs delivered (10-0)">🥚 {eggsByPlayer.get(entry.playerId)}</span>
+                )}
                 <p className="text-xl font-black text-primary tabular-nums">
                   {/* {entry.finalElo ?? entry.startingElo} */}
                   <EloValue value={entry.finalElo ?? entry.startingElo} enabled={isEasterEggActive} />
@@ -205,6 +221,9 @@ const handleSeasonNameClick = () => {
               >
                 <span className="text-3xl mb-1">{medals[0]}</span>
                 <p className="font-extrabold text-lg truncate max-w-full">{entry.playerName}</p>
+                {(eggsByPlayer.get(entry.playerId) ?? 0) > 0 && (
+                  <span className="text-xs font-bold leading-none mt-0.5" title="Eggs delivered (10-0)">🥚 {eggsByPlayer.get(entry.playerId)}</span>
+                )}
                 <p className="text-2xl font-black text-primary tabular-nums">
                   <EloValue value={entry.finalElo ?? entry.startingElo} enabled={isEasterEggActive} />
                 </p>
@@ -229,6 +248,9 @@ const handleSeasonNameClick = () => {
               >
                 <span className="text-2xl mb-1">{medals[2]}</span>
                 <p className="font-extrabold text-sm truncate max-w-full">{entry.playerName}</p>
+                {(eggsByPlayer.get(entry.playerId) ?? 0) > 0 && (
+                  <span className="text-[11px] font-bold leading-none mt-0.5" title="Eggs delivered (10-0)">🥚 {eggsByPlayer.get(entry.playerId)}</span>
+                )}
                 <p className="text-xl font-black text-primary tabular-nums">
                   <EloValue value={entry.finalElo ?? entry.startingElo} enabled={isEasterEggActive} />
                 </p>
@@ -257,7 +279,12 @@ const handleSeasonNameClick = () => {
                 {i + 4}
               </span>
               <div className="flex-1 min-w-0">
-                <p className="font-bold truncate">{entry.playerName}</p>
+                <p className="font-bold truncate flex items-center gap-1.5">
+                  <span className="truncate">{entry.playerName}</span>
+                  {(eggsByPlayer.get(entry.playerId) ?? 0) > 0 && (
+                    <span className="text-xs font-bold shrink-0" title="Eggs delivered (10-0)">🥚 {eggsByPlayer.get(entry.playerId)}</span>
+                  )}
+                </p>
                 {entry.matchesPlayed > 0 && (
                   <p className="text-xs text-muted-foreground">
                     {entry.matchesWon}W / {entry.matchesPlayed - entry.matchesWon}L
@@ -313,7 +340,9 @@ const handleSeasonNameClick = () => {
                           </div>
                           <div className="flex items-center gap-1.5 shrink-0">
                             <span className={`w-2 h-2 rounded-full ${winningTeam === 1 ? "bg-team-red" : "bg-team-red/30"}`} />
-                            <span className="text-xs text-muted-foreground font-bold">vs</span>
+                            {match.egg
+                              ? <span className="text-xs" title="Egg — 10-0 shutout">🥚</span>
+                              : <span className="text-xs text-muted-foreground font-bold">vs</span>}
                             <span className={`w-2 h-2 rounded-full ${winningTeam === 2 ? "bg-team-blue" : "bg-team-blue/30"}`} />
                           </div>
                           <div className={`flex-1 ${winningTeam === 2 ? "font-bold" : "text-muted-foreground"}`}>

@@ -3,7 +3,7 @@ import { useSearchParams } from "react-router";
 import { useGetPlayerMatchesQuery, useGetSeasonsQuery } from "../../apis/foosball/foosball";
 import type { PlayerMatchRecord } from "../../apis/foosball/types";
 import { buildMatchesFromRecords, computePlayerStats, type PlayerStats } from "~/lib/playerStats";
-import { Gamepad2, Trophy, Swords, Users, Flame, Target, Shield, Heart, TrendingUp, Calendar } from "lucide-react";
+import { Gamepad2, Trophy, Swords, Users, Flame, Target, Shield, Heart, TrendingUp, Calendar, Egg } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 
 export function meta() {
@@ -165,6 +165,24 @@ function PlayerDetail({ stats, winRateData }: { stats: PlayerStats; winRateData:
             iconColor="text-orange-500"
             label={stats.streak.type === "W" ? "Win Streak" : "Loss Streak"}
             value={`${stats.streak.count} ${stats.streak.type === "W" ? "wins" : "losses"}`}
+          />
+        )}
+        {stats.eggsGiven > 0 && (
+          <StatRow
+            icon={Egg}
+            iconColor="text-amber-500"
+            label="Eggs delivered"
+            value={`🥚 ${stats.eggsGiven}`}
+            sub="10-0 shutouts won"
+          />
+        )}
+        {stats.eggsReceived > 0 && (
+          <StatRow
+            icon={Egg}
+            iconColor="text-red-400"
+            label="Eggs received"
+            value={`🥚 ${stats.eggsReceived}`}
+            sub="10-0 shutouts lost"
           />
         )}
         {favoriteTeammate && (
@@ -330,6 +348,11 @@ export default function Stats() {
 
   const biggestRivalry = useMemo(() => rivalryStats[0], [rivalryStats]);
 
+  const eggKing = useMemo(() => {
+    const eligible = [...playerStats.values()].filter(s => s.eggsGiven > 0);
+    return eligible.sort((a, b) => b.eggsGiven - a.eggsGiven)[0];
+  }, [playerStats]);
+
   const sortedPlayers = useMemo(
     () => [...playerStats.values()].sort((a, b) => b.matches - a.matches),
     [playerStats]
@@ -440,6 +463,16 @@ export default function Stats() {
             sub={`${biggestRivalry.games} games against each other`}
             color="bg-red-500"
             delay={180}
+          />
+        )}
+        {eggKing && (
+          <HighlightCard
+            icon={Egg}
+            label="Egg King"
+            value={eggKing.name}
+            sub={`🥚 ${eggKing.eggsGiven} shutout${eggKing.eggsGiven === 1 ? "" : "s"} delivered`}
+            color="bg-amber-500"
+            delay={240}
           />
         )}
       </div>

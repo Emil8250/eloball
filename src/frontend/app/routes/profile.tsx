@@ -1,6 +1,6 @@
 import { useAuth0 } from "@auth0/auth0-react";
 import { useEffect, useState } from "react";
-import { toast } from "sonner";
+import { toast } from "~/lib/toast";
 import {
     Briefcase,
     Check,

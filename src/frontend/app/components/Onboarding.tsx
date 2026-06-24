@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useAuth0 } from "@auth0/auth0-react";
-import { toast } from "sonner";
+import { toast } from "~/lib/toast";
 import { Check, Loader2, LogOut, Search, UserPlus } from "lucide-react";
 import {
     useGetUnclaimedPlayersQuery,

@@ -22,6 +22,7 @@ export interface Match {
 export interface SubmitMatch {
     teamWonId: number;
     matches: Match[];
+    egg?: boolean;
 }
 
 export interface MatchInfo {

@@ -1,7 +1,10 @@
 import { useState } from "react";
-import { useGetActiveSeasonQuery, useGetSeasonLeaderboardQuery, useGetPlayersQuery, useGetPlayerMatchesQuery } from "../../apis/foosball/foosball";
+import { skipToken } from "@reduxjs/toolkit/query";
+import { useGetActiveSeasonQuery, useGetSeasonLeaderboardQuery, useGetPlayerMatchesQuery } from "../../apis/foosball/foosball";
 import type { LeaderboardEntry } from "../../apis/foosball/types";
 import { computePlayerStats, classifyRank, PLACEMENT_GAMES } from "~/lib/playerStats";
+import { useCurrentLeague } from "~/lib/useCurrentLeague";
+import { CurrentLeagueBadge } from "~/components/CurrentLeagueBadge";
 import { Link } from "react-router";
 import { Swords, TrendingUp, Trophy, Gamepad2 } from "lucide-react";
 
@@ -42,30 +45,28 @@ export function meta() {
 }
 
 export default function Leaderboard() {  
-  const { data: season, isLoading: seasonLoading } = useGetActiveSeasonQuery();
-  const { data: players, isLoading: playersLoading } = useGetPlayersQuery();
-  const { data: seasonLeaderboard, isLoading: lbLoading } = useGetSeasonLeaderboardQuery(
-    season?.id ?? 0,
-    { skip: !season?.id || season?.isActive }
-  );  
-  const { data: allPlayerMatches } = useGetPlayerMatchesQuery();
+  const leagueId = useCurrentLeague();
+  const { data: season, isLoading: seasonLoading } = useGetActiveSeasonQuery(leagueId ?? skipToken);
+  // Per-season ratings live in PlayerSeason — fetched for active seasons too.
+  const { data: seasonLeaderboard, isLoading: lbLoading } = useGetSeasonLeaderboardQuery(season?.id ?? skipToken);
+  const { data: allPlayerMatches } = useGetPlayerMatchesQuery(leagueId ?? skipToken);
   const [seasonNameClickCount, setSeasonNameClickCount] = useState(0);
-  const isLoading = seasonLoading || playersLoading || lbLoading;
+  const isLoading = seasonLoading || lbLoading;
 
   // For the active season, partition players (who have played this season) into
   // ranked / inactive / calibrating, CS-style — purely a display split, ratings untouched.
   const byElo = (a: LeaderboardEntry, b: LeaderboardEntry) =>
-    (b.finalElo ?? 0) - (a.finalElo ?? 0);
+    (b.latestElo ?? 0) - (a.latestElo ?? 0);
   const { activeLeaderboard, inactiveLeaderboard, calibrating } = (() => {
     const empty = {
       activeLeaderboard: [] as LeaderboardEntry[],
       inactiveLeaderboard: [] as LeaderboardEntry[],
       calibrating: [] as LeaderboardEntry[],
     };
-    if (!season?.isActive || !players || !allPlayerMatches) return empty;
+    if (!season?.isActive || !allPlayerMatches) return empty;
 
     const stats = computePlayerStats(allPlayerMatches, season.id);
-    const eloById = new Map(players.map(p => [p.id, p.elo]));
+    const eloById = new Map((seasonLeaderboard ?? []).map(e => [e.playerId, e.latestElo]));
     const now = Date.now();
     const calibrating: LeaderboardEntry[] = [];
     const inactiveLeaderboard: LeaderboardEntry[] = [];
@@ -75,7 +76,7 @@ export default function Leaderboard() {
         playerId: s.playerId,
         playerName: s.name,
         startingElo: 1000,
-        finalElo: eloById.get(s.playerId) ?? null,
+        latestElo: eloById.get(s.playerId) ?? null,
         matchesPlayed: s.matches,
         matchesWon: s.wins,
         winRate: s.winRate,
@@ -182,14 +183,17 @@ const handleSeasonNameClick = () => {
     <div className="max-w-2xl mx-auto px-4 py-6">
       {/* Season Header */}
       <div className="text-center mb-8">
-        <button
-          type="button"
-          onClick={handleSeasonNameClick}
-          className="inline-flex items-center gap-2 bg-primary/10 text-primary rounded-full px-4 py-1.5 text-sm font-bold mb-3"
-        >
-          <Trophy size={14} />
-          {season.name}
-        </button>
+        <div className="flex items-center justify-center gap-2 mb-3 flex-wrap">
+          <button
+            type="button"
+            onClick={handleSeasonNameClick}
+            className="inline-flex items-center gap-2 bg-primary/10 text-primary rounded-full px-4 py-1.5 text-sm font-bold"
+          >
+            <Trophy size={14} />
+            {season.name}
+          </button>
+          <CurrentLeagueBadge inline />
+        </div>
         <div className="flex justify-center gap-6 text-sm text-muted-foreground">
           <span className="flex items-center gap-1">
             <Gamepad2 size={14} />
@@ -221,8 +225,8 @@ const handleSeasonNameClick = () => {
                   <span className="text-[11px] font-bold leading-none mt-0.5" title="Eggs delivered (10-0)">🥚 {eggsByPlayer.get(entry.playerId)}</span>
                 )}
                 <p className="text-xl font-black text-primary tabular-nums">
-                  {/* {entry.finalElo ?? entry.startingElo} */}
-                  <EloValue value={entry.finalElo ?? entry.startingElo} enabled={isEasterEggActive} />
+                  {/* {entry.latestElo ?? entry.startingElo} */}
+                  <EloValue value={entry.latestElo ?? entry.startingElo} enabled={isEasterEggActive} />
                 </p>
                 {entry.matchesPlayed > 0 && (
                   <div className="text-[10px] text-muted-foreground mt-1">
@@ -248,7 +252,7 @@ const handleSeasonNameClick = () => {
                   <span className="text-xs font-bold leading-none mt-0.5" title="Eggs delivered (10-0)">🥚 {eggsByPlayer.get(entry.playerId)}</span>
                 )}
                 <p className="text-2xl font-black text-primary tabular-nums">
-                  <EloValue value={entry.finalElo ?? entry.startingElo} enabled={isEasterEggActive} />
+                  <EloValue value={entry.latestElo ?? entry.startingElo} enabled={isEasterEggActive} />
                 </p>
                 {entry.matchesPlayed > 0 && (
                   <div className="flex gap-2 text-xs text-muted-foreground mt-1">
@@ -275,7 +279,7 @@ const handleSeasonNameClick = () => {
                   <span className="text-[11px] font-bold leading-none mt-0.5" title="Eggs delivered (10-0)">🥚 {eggsByPlayer.get(entry.playerId)}</span>
                 )}
                 <p className="text-xl font-black text-primary tabular-nums">
-                  <EloValue value={entry.finalElo ?? entry.startingElo} enabled={isEasterEggActive} />
+                  <EloValue value={entry.latestElo ?? entry.startingElo} enabled={isEasterEggActive} />
                 </p>
                 {entry.matchesPlayed > 0 && (
                   <div className="text-[10px] text-muted-foreground mt-1">
@@ -321,7 +325,7 @@ const handleSeasonNameClick = () => {
                 )}
               </div>
               <div className="text-right">
-                <p className="text-lg font-extrabold tabular-nums"><EloValue value={entry.finalElo ?? entry.startingElo} enabled={isEasterEggActive} /></p>
+                <p className="text-lg font-extrabold tabular-nums"><EloValue value={entry.latestElo ?? entry.startingElo} enabled={isEasterEggActive} /></p>
               </div>
             </Link>
           ))}
@@ -359,7 +363,7 @@ const handleSeasonNameClick = () => {
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className="text-lg font-extrabold tabular-nums text-muted-foreground">{entry.finalElo ?? entry.startingElo}</p>
+                  <p className="text-lg font-extrabold tabular-nums text-muted-foreground">{entry.latestElo ?? entry.startingElo}</p>
                 </div>
               </Link>
             ))}
@@ -397,7 +401,7 @@ const handleSeasonNameClick = () => {
                   )}
                 </div>
                 <div className="text-right">
-                  <p className="text-lg font-extrabold tabular-nums text-muted-foreground">{entry.finalElo ?? entry.startingElo}</p>
+                  <p className="text-lg font-extrabold tabular-nums text-muted-foreground">{entry.latestElo ?? entry.startingElo}</p>
                 </div>
               </Link>
             ))}

@@ -18,11 +18,15 @@ public class PlayerController(EloballContext context) : ControllerBase
         ?? User.FindFirst("sub")?.Value
         ?? throw new InvalidOperationException("No subject claim on the token.");
 
+    /// <summary>Players who are members of the given league (the league's roster).</summary>
     [HttpGet(Name = "GetPlayers")]
-    public IEnumerable<Player> Get()
+    public async Task<IEnumerable<Player>> Get([FromQuery] int leagueId)
     {
-        var players = context.Players.ToList();
-        return players;
+        return await context.LeagueMemberships
+            .Where(m => m.LeagueId == leagueId)
+            .Select(m => m.Player)
+            .OrderBy(p => p.Name)
+            .ToListAsync();
     }
 
     /// <summary>The player linked to the current account, or 404 if not yet claimed (→ onboarding).</summary>
@@ -84,7 +88,7 @@ public class PlayerController(EloballContext context) : ControllerBase
         if (string.IsNullOrWhiteSpace(name))
             return BadRequest("Name is required.");
 
-        var player = new Player { Name = name, Elo = 1000 };
+        var player = new Player { Name = name };
         context.Players.Add(player);
         await context.SaveChangesAsync();
 
@@ -130,11 +134,12 @@ public class PlayerController(EloballContext context) : ControllerBase
     }
 
     [HttpGet("playerMatches", Name = "GetPlayerMatches")]
-    public IEnumerable<PlayerMatch> GetPlayerMatches()
+    public IEnumerable<PlayerMatch> GetPlayerMatches([FromQuery] int leagueId)
     {
         var playerMatches = context.PlayerMatches
             .Include(pm => pm.Player)
             .Include(pm => pm.Match)
+            .Where(pm => pm.Match.Season != null && pm.Match.Season.LeagueId == leagueId)
             .ToList();
         
         // Break circular references to avoid serialization issues

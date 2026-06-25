@@ -17,6 +17,10 @@ public partial class Season
 
     public DateTime CreatedAt { get; set; }
 
+    public int LeagueId { get; set; }
+
+    public virtual League League { get; set; } = null!;
+
     public virtual ICollection<Match> Matches { get; set; } = new List<Match>();
 
     public virtual ICollection<PlayerSeason> PlayerSeasons { get; set; } = new List<PlayerSeason>();

@@ -1,8 +1,11 @@
+import { skipToken } from "@reduxjs/toolkit/query";
 import { useGetSeasonsQuery, useGetSeasonLeaderboardQuery, useGetActiveSeasonQuery, useGetPlayerMatchesQuery, useEndSeasonMutation, useCreateSeasonMutation } from "../../apis/foosball/foosball";
 import { Link } from "react-router";
-import { Calendar, Crown, Trophy, ChevronRight, Gamepad2, TrendingUp } from "lucide-react";
+import { Calendar, Crown, Trophy, ChevronRight, Dices, Gamepad2, TrendingUp } from "lucide-react";
 import type { Season } from "../../apis/foosball/types";
 import { computePlayerStats, classifyRank, type RankStatus } from "~/lib/playerStats";
+import { useCurrentLeague } from "~/lib/useCurrentLeague";
+import { CurrentLeagueBadge } from "~/components/CurrentLeagueBadge";
 import { useState } from "react";
 import { toast } from "~/lib/toast";
 import { Button } from "~/components/ui/button";
@@ -19,8 +22,9 @@ const chartColors = [
 ];
 
 function SeasonCard({ season }: { season: Season }) {
+  const leagueId = useCurrentLeague();
   const { data: leaderboard } = useGetSeasonLeaderboardQuery(season.id);
-  const { data: allPlayerMatches } = useGetPlayerMatchesQuery();
+  const { data: allPlayerMatches } = useGetPlayerMatchesQuery(leagueId ?? skipToken);
 
   const startDate = new Date(season.startDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
   const endDate = season.endDate
@@ -66,7 +70,7 @@ function SeasonCard({ season }: { season: Season }) {
           <Crown size={16} className="text-amber-500" />
           <span className="font-bold text-sm">{winner.playerName}</span>
           <span className="text-sm font-extrabold text-primary ml-auto tabular-nums">
-            {winner.finalElo ?? winner.startingElo}
+            {winner.latestElo ?? winner.startingElo}
           </span>
         </div>
       )}
@@ -95,8 +99,8 @@ function SeasonCard({ season }: { season: Season }) {
             >
               <span>{["🥇", "🥈", "🥉"][i]}</span>
               <span className="font-semibold truncate max-w-[70px]">{entry.playerName}</span>
-              {entry.finalElo && (
-                <span className="text-muted-foreground tabular-nums">{entry.finalElo}</span>
+              {entry.latestElo && (
+                <span className="text-muted-foreground tabular-nums">{entry.latestElo}</span>
               )}
             </div>
           ))}
@@ -164,8 +168,9 @@ function EloTooltip({ active, payload, label, statuses }: {
 
 function EloHistoryChart({ seasons, pastSeasons }: { seasons: Season[]; pastSeasons: Season[] }) {
   // Fetch leaderboards for all past seasons
+  const leagueId = useCurrentLeague();
   const leaderboardQueries = pastSeasons.map(s => useGetSeasonLeaderboardQuery(s.id));
-  const { data: allPlayerMatches } = useGetPlayerMatchesQuery();
+  const { data: allPlayerMatches } = useGetPlayerMatchesQuery(leagueId ?? skipToken);
   const allLoaded = leaderboardQueries.every(q => q.data !== undefined);
 
   if (!allLoaded || pastSeasons.length < 1) return null;
@@ -185,8 +190,8 @@ function EloHistoryChart({ seasons, pastSeasons }: { seasons: Season[]; pastSeas
     const lb = orderedQueries[i].data ?? [];
     const point: Record<string, string | number> = { name: season.name };
     lb.forEach(entry => {
-      if (entry.finalElo != null) {
-        point[entry.playerName] = entry.finalElo;
+      if (entry.latestElo != null) {
+        point[entry.playerName] = entry.latestElo;
       }
     });
     return point;
@@ -257,8 +262,9 @@ function generateSeasonName(): string {
 }
 
 export default function Seasons() {
-  const { data: seasons, isLoading } = useGetSeasonsQuery();
-  const { data: activeSeason } = useGetActiveSeasonQuery();
+  const leagueId = useCurrentLeague();
+  const { data: seasons, isLoading } = useGetSeasonsQuery(leagueId ?? skipToken);
+  const { data: activeSeason } = useGetActiveSeasonQuery(leagueId ?? skipToken);
   const [endSeason] = useEndSeasonMutation();
   const [createSeason] = useCreateSeasonMutation();
 
@@ -279,7 +285,12 @@ export default function Seasons() {
       }
     }
     try {
-      await createSeason({ name: newName.trim() }).unwrap();
+      if (leagueId == null) {
+        toast.error("No league selected.");
+        setSubmitting(false);
+        return;
+      }
+      await createSeason({ name: newName.trim(), leagueId }).unwrap();
       toast.success(`New season "${newName.trim()}" started!`);
       setDialogOpen(false);
       setNewName("");
@@ -302,10 +313,7 @@ export default function Seasons() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
-      <div className="text-center mb-6">
-        <h1 className="text-2xl font-extrabold mb-1">Seasons</h1>
-        <p className="text-sm text-muted-foreground">Past seasons and champions</p>
-      </div>
+      <CurrentLeagueBadge />
 
       {/* Active season banner — links to leaderboard */}
       {activeSeason && <ActiveSeasonBanner season={activeSeason} />}
@@ -357,15 +365,26 @@ export default function Seasons() {
           </DialogHeader>
           <div className="py-4">
             <label className="text-sm font-semibold text-muted-foreground block mb-2">New Season Name</label>
-            <input
-              type="text"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              placeholder="e.g. Shadow Protocol"
-              className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-              disabled={submitting}
-              autoFocus
-            />
+            <div className="relative">
+              <input
+                type="text"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder="e.g. Shadow Protocol"
+                className="w-full rounded-xl border border-border bg-background pl-4 pr-12 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                disabled={submitting}
+                autoFocus
+              />
+              <button
+                type="button"
+                onClick={() => setNewName(generateSeasonName())}
+                title="Surprise me"
+                disabled={submitting}
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer disabled:opacity-40"
+              >
+                <Dices size={18} />
+              </button>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={submitting}>

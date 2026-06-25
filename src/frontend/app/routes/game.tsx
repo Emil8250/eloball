@@ -1,6 +1,9 @@
-import { useGetPlayersQuery, usePostMatchMutation } from "../../apis/foosball/foosball";
+import { skipToken } from "@reduxjs/toolkit/query";
+import { useGetPlayersQuery, usePostMatchMutation, useGetActiveSeasonQuery, useGetSeasonLeaderboardQuery } from "../../apis/foosball/foosball";
 import type { Match, PlayerTeam } from "../../apis/foosball/types";
 import usePlayerContext from "~/context/PlayerContext/usePlayerContext";
+import { useCurrentLeague } from "~/lib/useCurrentLeague";
+import { CurrentLeagueBadge } from "~/components/CurrentLeagueBadge";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "~/lib/toast";
 import { Button } from "~/components/ui/button";
@@ -28,11 +31,18 @@ function eloBadgeOnDark(elo: number): string {
 }
 
 export default function Game() {
-  const { data: players, isLoading: playersLoading } = useGetPlayersQuery();
+  const leagueId = useCurrentLeague();
+  const { data: players, isLoading: playersLoading } = useGetPlayersQuery(leagueId ?? skipToken);
+  const { data: activeSeason } = useGetActiveSeasonQuery(leagueId ?? skipToken);
+  const { data: leaderboard } = useGetSeasonLeaderboardQuery(activeSeason?.id ?? skipToken);
   const { players: selected, addPlayer, removePlayer } = usePlayerContext();
   const [postMatch, { isLoading: submitting, isSuccess }] = usePostMatchMutation();
   const [isEgg, setIsEgg] = useState(false);
   const [started, setStarted] = useState(false);
+
+  // Per-player rating = their latestElo in the active season (1000 if they haven't played it).
+  const eloById = new Map((leaderboard ?? []).map(e => [e.playerId, e.latestElo ?? e.startingElo]));
+  const eloOf = (id: number) => eloById.get(id) ?? 1000;
 
   useEffect(() => {
     if (isSuccess) {
@@ -48,8 +58,8 @@ export default function Game() {
   const canSubmit = team1.length > 0 && team2.length > 0 && selected.length >= 2;
   const canCalibrate = selected.length >= 3 && selected.length <= 4;
 
-  const team1Elo = team1.reduce((sum, p) => sum + p.player.elo, 0);
-  const team2Elo = team2.reduce((sum, p) => sum + p.player.elo, 0);
+  const team1Elo = team1.reduce((sum, p) => sum + eloOf(p.player.id), 0);
+  const team2Elo = team2.reduce((sum, p) => sum + eloOf(p.player.id), 0);
   const startingTeam: 1 | 2 | null =
     team1.length > 0 && team2.length > 0 && team1Elo !== team2Elo
       ? (team1Elo < team2Elo ? 1 : 2)
@@ -57,7 +67,7 @@ export default function Game() {
 
   const isSelected = (id: number) => selected.some(p => p.player.id === id);
 
-  const addToTeam = (player: { id: number; name: string; elo: number }, team: number) => {
+  const addToTeam = (player: { id: number; name: string }, team: number) => {
     if (isSelected(player.id)) {
       // If already selected, switch team
       removePlayer(player.id);
@@ -76,7 +86,7 @@ export default function Game() {
 
   const calibrateTeams = useCallback(() => {
     if (!canCalibrate) return;
-    const sorted = [...selected].sort((a, b) => a.player.elo - b.player.elo);
+    const sorted = [...selected].sort((a, b) => eloOf(a.player.id) - eloOf(b.player.id));
     let updated: PlayerTeam[] = [];
 
     if (selected.length === 4) {
@@ -116,8 +126,8 @@ export default function Game() {
       playerId: p.player.id,
       teamId: p.team
     }));
-    if (canSubmit) {
-      postMatch({ matches, teamWonId, egg: isEgg });
+    if (canSubmit && leagueId != null) {
+      postMatch({ matches, teamWonId, leagueId, egg: isEgg });
     }
   };
 
@@ -132,11 +142,14 @@ export default function Game() {
   const sortedPlayers = players ? [...players].sort((a, b) => a.name.localeCompare(b.name)) : [];
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
-      
-      {/* Foosball-style header */}
-      <div className="text-center mb-6">
-        <h1 className="text-2xl font-extrabold mb-1">New Match</h1>
-        <p className="text-sm text-muted-foreground">Select players and assign teams</p>
+      <div className="flex items-center justify-center gap-2 mb-4 flex-wrap">
+        {activeSeason && (
+          <span className="inline-flex items-center gap-2 bg-primary/10 text-primary rounded-full px-4 py-1.5 text-sm font-bold">
+            <Trophy size={14} />
+            {activeSeason.name}
+          </span>
+        )}
+        <CurrentLeagueBadge inline />
       </div>
       {/* Team Display — Bonzini-inspired with wood/green field vibe */}
       <div className="rounded-2xl bg-gradient-to-b from-emerald-800 to-emerald-900 p-4 mb-4 shadow-lg relative overflow-hidden">
@@ -163,8 +176,8 @@ export default function Game() {
                       <div className="flex items-center justify-between w-full">
                         <div>
                           <p className="font-bold text-sm text-white">{p.player.name}</p>
-                          <span className={`inline-block text-[10px] font-bold px-1.5 py-0.5 rounded border mt-0.5 ${eloBadgeOnDark(p.player.elo)}`}>
-                            {p.player.elo}
+                          <span className={`inline-block text-[10px] font-bold px-1.5 py-0.5 rounded border mt-0.5 ${eloBadgeOnDark(eloOf(p.player.id))}`}>
+                            {eloOf(p.player.id)}
                           </span>
                         </div>
                         {!started && (
@@ -198,8 +211,8 @@ export default function Game() {
                       <div className="flex items-center justify-between w-full">
                         <div>
                           <p className="font-bold text-sm text-white">{p.player.name}</p>
-                          <span className={`inline-block text-[10px] font-bold px-1.5 py-0.5 rounded border mt-0.5 ${eloBadgeOnDark(p.player.elo)}`}>
-                            {p.player.elo}
+                          <span className={`inline-block text-[10px] font-bold px-1.5 py-0.5 rounded border mt-0.5 ${eloBadgeOnDark(eloOf(p.player.id))}`}>
+                            {eloOf(p.player.id)}
                           </span>
                         </div>
                         {!started && (
@@ -339,8 +352,8 @@ export default function Game() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2 min-w-0">
                     <p className="font-bold text-sm truncate">{player.name}</p>
-                    <span className={`inline-flex text-[10px] font-bold px-1.5 py-0.5 rounded border shrink-0 ${eloBadgeColor(player.elo)}`}>
-                      {player.elo}
+                    <span className={`inline-flex text-[10px] font-bold px-1.5 py-0.5 rounded border shrink-0 ${eloBadgeColor(eloOf(player.id))}`}>
+                      {eloOf(player.id)}
                     </span>
                   </div>
 

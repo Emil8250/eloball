@@ -2,6 +2,7 @@ import { configureStore, isRejectedWithValue, type Middleware } from '@reduxjs/t
 import { setupListeners } from '@reduxjs/toolkit/query'
 import { foosballApi } from '../apis/foosball/foosball'
 import authReducer, { setForbidden } from './authSlice'
+import leagueReducer from './leagueSlice'
 
 const forbiddenMiddleware: Middleware = (api) => (next) => (action) => {
     if (isRejectedWithValue(action) && (action.payload as { status?: number })?.status === 403) {
@@ -14,6 +15,7 @@ export const store = configureStore({
     reducer: {
         [foosballApi.reducerPath]: foosballApi.reducer,
         auth: authReducer,
+        league: leagueReducer,
     },
     middleware: (getDefaultMiddleware) =>
         getDefaultMiddleware().concat(foosballApi.middleware, forbiddenMiddleware),

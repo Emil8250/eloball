@@ -116,7 +116,6 @@ export function Onboarding() {
                                             }`}
                                         >
                                             <span className="flex-1 font-semibold text-sm truncate">{p.name}</span>
-                                            <span className="text-xs text-muted-foreground tabular-nums">{p.elo}</span>
                                             {isSel && <Check size={16} className="text-primary shrink-0" />}
                                         </button>
                                     );

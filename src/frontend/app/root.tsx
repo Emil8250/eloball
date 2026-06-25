@@ -17,11 +17,15 @@ import {Toaster} from "sonner";
 import {Trophy, Calendar, Swords, BarChart3, Loader2, User} from "lucide-react";
 import PlayerProvider from "~/context/PlayerContext/PlayerProvider";
 import {Auth0Provider, useAuth0} from "@auth0/auth0-react";
-import {setTokenGetter, useGetMeQuery} from "../apis/foosball/foosball";
+import {setTokenGetter, useGetMeQuery, useGetMyLeaguesQuery} from "../apis/foosball/foosball";
 import {useEffect} from "react";
 import {setForbidden} from "~/authSlice";
+import {setCurrentLeague} from "~/leagueSlice";
+import {useCurrentLeague} from "~/lib/useCurrentLeague";
 import {ForbiddenPage} from "~/components/ForbiddenPage";
 import {Onboarding} from "~/components/Onboarding";
+import {LeagueOnboarding} from "~/components/LeagueOnboarding";
+import {LeagueChooser} from "~/components/LeagueChooser";
 
 const AUTH0_AUDIENCE = "https://api.billigeterninger.dk/";
 
@@ -136,9 +140,23 @@ function AppShell({children}: { children: React.ReactNode }) {
     const {isLoading: meLoading, error: meError} = useGetMeQuery(undefined, {skip: !isAuthenticated});
     const needsOnboarding = (meError as {status?: number} | undefined)?.status === 404;
 
+    // Which leagues is this player in, and which one is open?
+    const currentLeagueId = useCurrentLeague();
+    const {data: myLeagues, isLoading: leaguesLoading} = useGetMyLeaguesQuery(undefined, {
+        skip: !isAuthenticated || needsOnboarding,
+    });
+    const validCurrent = currentLeagueId != null && (myLeagues?.some(l => l.id === currentLeagueId) ?? false);
+
     useEffect(() => {
         if (!isAuthenticated) dispatch(setForbidden(false));
     }, [isAuthenticated, dispatch]);
+
+    // Exactly one league → open it automatically.
+    useEffect(() => {
+        if (myLeagues && myLeagues.length === 1 && !validCurrent) {
+            dispatch(setCurrentLeague(myLeagues[0].id));
+        }
+    }, [myLeagues, validCurrent, dispatch]);
 
     if (isAuthenticated) {
         setTokenGetter(() => getAccessTokenSilently({authorizationParams: {audience: AUTH0_AUDIENCE}}));
@@ -172,6 +190,30 @@ function AppShell({children}: { children: React.ReactNode }) {
 
     if (needsOnboarding) {
         return <Onboarding/>;
+    }
+
+    if (leaguesLoading || !myLeagues) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <Loader2 size={32} className="animate-spin text-muted-foreground"/>
+            </div>
+        );
+    }
+
+    if (myLeagues.length === 0) {
+        return <LeagueOnboarding/>;
+    }
+
+    if (!validCurrent) {
+        // >1 league → pick one; exactly one is auto-selected by the effect above.
+        if (myLeagues.length > 1) {
+            return <LeagueChooser/>;
+        }
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <Loader2 size={32} className="animate-spin text-muted-foreground"/>
+            </div>
+        );
     }
 
     return (

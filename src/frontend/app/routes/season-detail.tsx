@@ -1,8 +1,10 @@
 import { useMemo } from "react";
+import { skipToken } from "@reduxjs/toolkit/query";
 import { useParams, Link } from "react-router";
-import { useGetSeasonQuery, useGetSeasonLeaderboardQuery, useGetPlayersQuery, useGetPlayerMatchesQuery } from "../../apis/foosball/foosball";
+import { useGetSeasonQuery, useGetSeasonLeaderboardQuery, useGetPlayerMatchesQuery } from "../../apis/foosball/foosball";
 import type { LeaderboardEntry } from "../../apis/foosball/types";
 import { computePlayerStats, classifyRank, PLACEMENT_GAMES } from "~/lib/playerStats";
+import { useCurrentLeague } from "~/lib/useCurrentLeague";
 import { ArrowLeft, Calendar, Gamepad2, Trophy } from "lucide-react";
 
 const medals = ["🥇", "🥈", "🥉"];
@@ -44,7 +46,7 @@ function SecondarySection({ title, entries, seasonId, mode }: {
               </p>
             </div>
             <div className="text-right">
-              <p className="text-lg font-extrabold tabular-nums text-muted-foreground">{entry.finalElo ?? entry.startingElo}</p>
+              <p className="text-lg font-extrabold tabular-nums text-muted-foreground">{entry.latestElo ?? entry.startingElo}</p>
             </div>
           </Link>
         ))}
@@ -56,16 +58,13 @@ function SecondarySection({ title, entries, seasonId, mode }: {
 export default function SeasonDetail() {
   const { id } = useParams();
   const seasonId = Number(id);
+  const leagueId = useCurrentLeague();
   const { data: season, isLoading: seasonLoading } = useGetSeasonQuery(seasonId);
-  const { data: seasonLeaderboard, isLoading: lbLoading } = useGetSeasonLeaderboardQuery(seasonId, {
-    skip: season?.isActive,
-  });
-  const { data: players, isLoading: playersLoading } = useGetPlayersQuery(undefined, {
-    skip: !season?.isActive,
-  });
-  const { data: allPlayerMatches } = useGetPlayerMatchesQuery();
+  // PlayerSeason holds ratings for active seasons too, so fetch the leaderboard either way.
+  const { data: seasonLeaderboard, isLoading: lbLoading } = useGetSeasonLeaderboardQuery(seasonId);
+  const { data: allPlayerMatches } = useGetPlayerMatchesQuery(leagueId ?? skipToken);
 
-  const isLoading = seasonLoading || lbLoading || playersLoading;
+  const isLoading = seasonLoading || lbLoading;
 
   // Compute W/L/played per player from match records (backend leaderboard stats are unreliable)
   const playerStats = useMemo(
@@ -83,20 +82,8 @@ export default function SeasonDetail() {
     };
   };
 
-  // For active season, build leaderboard from player data
-  const leaderboard: LeaderboardEntry[] | undefined = season?.isActive && players
-    ? [...players]
-        .sort((a, b) => b.elo - a.elo)
-        .map(p => withStats({
-          playerId: p.id,
-          playerName: p.name,
-          startingElo: 1000,
-          finalElo: p.elo,
-          matchesPlayed: 0,
-          matchesWon: 0,
-          winRate: 0,
-        }))
-    : seasonLeaderboard?.map(withStats);
+  // Ratings come from PlayerSeason (active + ended); W/L recomputed from match records.
+  const leaderboard: LeaderboardEntry[] | undefined = seasonLeaderboard?.map(withStats);
 
   if (isLoading) {
     return (
@@ -220,7 +207,7 @@ export default function SeasonDetail() {
           </div>
           <div className="divide-y divide-border/30">
             {standings.map((entry, i) => {
-              const finalElo = entry.finalElo ?? entry.startingElo;
+              const finalElo = entry.latestElo ?? entry.startingElo;
               const eloChange = finalElo - entry.startingElo;
               return (
                 <Link

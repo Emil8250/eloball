@@ -13,7 +13,8 @@ public partial class PlayerSeason
 
     public int StartingElo { get; set; }
 
-    public int? FinalElo { get; set; }
+    /// <summary>The player's live rating in this season; frozen once the season ends.</summary>
+    public int? LatestElo { get; set; }
 
     public int MatchesPlayed { get; set; }
 

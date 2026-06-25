@@ -1,7 +1,5 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react'
-import type { BaseQueryFn, FetchArgs, FetchBaseQueryError } from '@reduxjs/toolkit/query'
-import type { LeaderboardEntry, Player, PlayerMatchRecord, Season, SubmitMatch } from "./types";
-import { getMockResponse } from '../../mocks/data'
+import type { LeaderboardEntry, LeagueMember, LeagueSummary, MyLeague, Player, PlayerMatchRecord, Season, SubmitMatch } from "./types";
 
 const API_BASE_URL = import.meta.env.VITE_API_URL ?? 'https://api.billigeterninger.dk/api/'
 
@@ -27,26 +25,15 @@ const realBaseQuery = fetchBaseQuery({
     },
 })
 
-const baseQueryWithMock: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQueryError> = async (args, api, extraOptions) => {
-    if (typeof window !== 'undefined' && window.location.search.includes('mock')) {
-        const url = typeof args === 'string' ? args : args.url
-        const fullUrl = API_BASE_URL + url
-        const mockData = getMockResponse(fullUrl)
-        if (mockData !== undefined) {
-            return { data: mockData }
-        }
-    }
-    return realBaseQuery(args, api, extraOptions)
-}
-
 export const foosballApi = createApi({
     reducerPath: 'foosballApi',
-    baseQuery: baseQueryWithMock,
-    tagTypes: ["match", "season", "me"],
+    baseQuery: realBaseQuery,
+    tagTypes: ["match", "season", "me", "league"],
     endpoints: (builder) => ({
-        getPlayers: builder.query<Player[], void>({
-            query: () => 'player',
-            providesTags: ["match"]
+        // League roster (members of the given league).
+        getPlayers: builder.query<Player[], number>({
+            query: (leagueId) => `player?leagueId=${leagueId}`,
+            providesTags: ["match", "league"]
         }),
         // The player linked to the current account; 404 → needs onboarding.
         getMe: builder.query<Player, void>({
@@ -77,12 +64,12 @@ export const foosballApi = createApi({
             }),
             invalidatesTags: ["match", "season"]
         }),
-        getSeasons: builder.query<Season[], void>({
-            query: () => 'season',
+        getSeasons: builder.query<Season[], number>({
+            query: (leagueId) => `season?leagueId=${leagueId}`,
             providesTags: ["season"]
         }),
-        getActiveSeason: builder.query<Season, void>({
-            query: () => 'season/active',
+        getActiveSeason: builder.query<Season, number>({
+            query: (leagueId) => `season/active?leagueId=${leagueId}`,
             providesTags: ["season"]
         }),
         getSeason: builder.query<Season, number>({
@@ -93,17 +80,63 @@ export const foosballApi = createApi({
             query: (id) => `season/${id}/leaderboard`,
             providesTags: ["season"]
         }),
-        getPlayerMatches: builder.query<PlayerMatchRecord[], void>({
-            query: () => 'player/playerMatches',
+        getPlayerMatches: builder.query<PlayerMatchRecord[], number>({
+            query: (leagueId) => `player/playerMatches?leagueId=${leagueId}`,
             providesTags: ["match"]
         }),
         endSeason: builder.mutation<Season, number>({
             query: (id) => ({ url: `season/${id}/end`, method: 'POST' }),
             invalidatesTags: ["season", "match"]
         }),
-        createSeason: builder.mutation<Season, { name: string }>({
+        createSeason: builder.mutation<Season, { name: string; leagueId: number }>({
             query: (body) => ({ url: 'season', method: 'POST', body }),
             invalidatesTags: ["season", "match"]
+        }),
+
+        // --- Leagues ---
+        getLeagues: builder.query<LeagueSummary[], void>({
+            query: () => 'league',
+            providesTags: ["league"]
+        }),
+        getMyLeagues: builder.query<MyLeague[], void>({
+            query: () => 'league/mine',
+            providesTags: ["league"]
+        }),
+        getLeagueMembers: builder.query<LeagueMember[], number>({
+            query: (id) => `league/${id}/members`,
+            providesTags: ["league"]
+        }),
+        createLeague: builder.mutation<{ id: number; name: string }, { name: string }>({
+            query: (body) => ({ url: 'league', method: 'POST', body }),
+            invalidatesTags: ["league"]
+        }),
+        renameLeague: builder.mutation<{ id: number; name: string }, { id: number; name: string }>({
+            query: ({ id, name }) => ({ url: `league/${id}`, method: 'PUT', body: { name } }),
+            invalidatesTags: ["league"]
+        }),
+        joinLeague: builder.mutation<void, number>({
+            query: (id) => ({ url: `league/${id}/join`, method: 'POST' }),
+            invalidatesTags: ["league"]
+        }),
+        leaveLeague: builder.mutation<void, number>({
+            query: (id) => ({ url: `league/${id}/leave`, method: 'POST' }),
+            invalidatesTags: ["league"]
+        }),
+        claimOwnership: builder.mutation<void, number>({
+            query: (id) => ({ url: `league/${id}/claim-ownership`, method: 'POST' }),
+            invalidatesTags: ["league"]
+        }),
+        delegateOwnership: builder.mutation<void, { id: number; playerId: number }>({
+            query: ({ id, playerId }) => ({ url: `league/${id}/delegate`, method: 'POST', body: { playerId } }),
+            invalidatesTags: ["league"]
+        }),
+        removeMember: builder.mutation<void, { id: number; playerId: number }>({
+            query: ({ id, playerId }) => ({ url: `league/${id}/members/${playerId}/remove`, method: 'POST' }),
+            invalidatesTags: ["league"]
+        }),
+        deleteLeague: builder.mutation<void, number>({
+            query: (id) => ({ url: `league/${id}`, method: 'DELETE' }),
+            invalidatesTags: ["league", "season", "match"]
         }),
     }),
 })
@@ -123,4 +156,15 @@ export const {
     useGetPlayerMatchesQuery,
     useEndSeasonMutation,
     useCreateSeasonMutation,
+    useGetLeaguesQuery,
+    useGetMyLeaguesQuery,
+    useGetLeagueMembersQuery,
+    useCreateLeagueMutation,
+    useRenameLeagueMutation,
+    useJoinLeagueMutation,
+    useLeaveLeagueMutation,
+    useClaimOwnershipMutation,
+    useDelegateOwnershipMutation,
+    useRemoveMemberMutation,
+    useDeleteLeagueMutation,
 } = foosballApi

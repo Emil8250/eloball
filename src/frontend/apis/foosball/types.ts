@@ -1,7 +1,6 @@
 export interface Player {
     id: number;
     name: string;
-    elo: number;
     rank?: number;
 }
 
@@ -22,6 +21,7 @@ export interface Match {
 export interface SubmitMatch {
     teamWonId: number;
     matches: Match[];
+    leagueId: number;
     egg?: boolean;
 }
 
@@ -55,8 +55,32 @@ export interface LeaderboardEntry {
     playerId: number;
     playerName: string;
     startingElo: number;
-    finalElo: number | null;
+    latestElo: number | null;
     matchesPlayed: number;
     matchesWon: number;
     winRate: number;
+}
+
+export type LeagueRole = "Owner" | "Member";
+
+export interface LeagueSummary {
+    id: number;
+    name: string;
+    memberCount: number;
+    isMember: boolean;
+    hasOwner: boolean;
+}
+
+export interface MyLeague {
+    id: number;
+    name: string;
+    role: LeagueRole;
+    memberCount: number;
+    hasOwner: boolean;
+}
+
+export interface LeagueMember {
+    playerId: number;
+    name: string;
+    role: LeagueRole;
 }

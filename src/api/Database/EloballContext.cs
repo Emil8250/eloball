@@ -27,6 +27,10 @@ public partial class EloballContext : DbContext
 
     public virtual DbSet<UserProfile> UserProfiles { get; set; }
 
+    public virtual DbSet<League> Leagues { get; set; }
+
+    public virtual DbSet<LeagueMembership> LeagueMemberships { get; set; }
+
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
     {
     }
@@ -63,9 +67,6 @@ public partial class EloballContext : DbContext
             entity.Property(e => e.CreatedDateTime)
                 .HasDefaultValueSql("(sysdatetime())")
                 .HasColumnName("createdDateTime");
-            entity.Property(e => e.Elo)
-                .HasDefaultValue(1000)
-                .HasColumnName("elo");
             entity.Property(e => e.Name).HasColumnName("name");
             entity.Property(e => e.UpdatedDateTime)
                 .HasDefaultValueSql("(sysdatetime())")
@@ -107,7 +108,7 @@ public partial class EloballContext : DbContext
             entity.HasIndex(e => new { e.PlayerId, e.SeasonId }, "UQ_PlayerSeason").IsUnique();
 
             entity.Property(e => e.Id).HasColumnName("id");
-            entity.Property(e => e.FinalElo).HasColumnName("finalElo");
+            entity.Property(e => e.LatestElo).HasColumnName("latestElo");
             entity.Property(e => e.MatchesPlayed).HasColumnName("matchesPlayed");
             entity.Property(e => e.MatchesWon).HasColumnName("matchesWon");
             entity.Property(e => e.PlayerId).HasColumnName("playerId");
@@ -150,6 +151,55 @@ public partial class EloballContext : DbContext
             entity.Property(e => e.StartDate)
                 .HasColumnType("datetime")
                 .HasColumnName("startDate");
+            entity.Property(e => e.LeagueId).HasColumnName("leagueId");
+
+            entity.HasOne(d => d.League).WithMany(p => p.Seasons)
+                .HasForeignKey(d => d.LeagueId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_season_league");
+        });
+
+        modelBuilder.Entity<League>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK_league");
+
+            entity.ToTable("league");
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.Name).HasMaxLength(100).HasColumnName("name");
+            entity.Property(e => e.CreatedDateTime)
+                .HasDefaultValueSql("(sysdatetime())")
+                .HasColumnName("createdDateTime");
+            entity.Property(e => e.UpdatedDateTime)
+                .HasDefaultValueSql("(sysdatetime())")
+                .HasColumnName("updatedDateTime");
+        });
+
+        modelBuilder.Entity<LeagueMembership>(entity =>
+        {
+            entity.HasKey(e => e.Id).HasName("PK_leagueMembership");
+
+            entity.ToTable("leagueMembership");
+
+            entity.HasIndex(e => new { e.LeagueId, e.PlayerId }, "UQ_leagueMembership").IsUnique();
+
+            entity.Property(e => e.Id).HasColumnName("id");
+            entity.Property(e => e.LeagueId).HasColumnName("leagueId");
+            entity.Property(e => e.PlayerId).HasColumnName("playerId");
+            entity.Property(e => e.Role).HasMaxLength(20).HasColumnName("role");
+            entity.Property(e => e.JoinedDateTime)
+                .HasDefaultValueSql("(sysdatetime())")
+                .HasColumnName("joinedDateTime");
+
+            entity.HasOne(d => d.League).WithMany(p => p.Memberships)
+                .HasForeignKey(d => d.LeagueId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_leagueMembership_league");
+
+            entity.HasOne(d => d.Player).WithMany()
+                .HasForeignKey(d => d.PlayerId)
+                .OnDelete(DeleteBehavior.ClientSetNull)
+                .HasConstraintName("FK_leagueMembership_player");
         });
 
         modelBuilder.Entity<UserProfile>(entity =>

@@ -9,19 +9,20 @@ namespace api.Controllers;
 public class SeasonController(EloballContext context) : ControllerBase
 {
     [HttpGet]
-    public async Task<IEnumerable<Season>> Get()
+    public async Task<IEnumerable<Season>> Get([FromQuery] int leagueId)
     {
         return await context.Seasons
+            .Where(s => s.LeagueId == leagueId)
             .OrderByDescending(s => s.StartDate)
             .ToListAsync();
     }
 
     [HttpGet("active", Name = "GetActiveSeason")]
-    public async Task<ActionResult<Season>> GetActive()
+    public async Task<ActionResult<Season>> GetActive([FromQuery] int leagueId)
     {
         var activeSeason = await context.Seasons
             .Include(s => s.Matches)
-            .FirstOrDefaultAsync(s => s.IsActive);
+            .FirstOrDefaultAsync(s => s.IsActive && s.LeagueId == leagueId);
 
         if (activeSeason == null)
             return NotFound("No active season found");
@@ -46,13 +47,13 @@ public class SeasonController(EloballContext context) : ControllerBase
         var leaderboard = await context.PlayerSeasons
             .Include(ps => ps.Player)
             .Where(ps => ps.SeasonId == id)
-            .OrderByDescending(ps => ps.FinalElo ?? ps.StartingElo)
+            .OrderByDescending(ps => ps.LatestElo ?? ps.StartingElo)
             .Select(ps => new
             {
                 PlayerId = ps.PlayerId,
                 PlayerName = ps.Player.Name,
                 StartingElo = ps.StartingElo,
-                FinalElo = ps.FinalElo,
+                LatestElo = ps.LatestElo,
                 MatchesPlayed = ps.MatchesPlayed,
                 MatchesWon = ps.MatchesWon,
                 WinRate = ps.MatchesPlayed > 0 ? (double)ps.MatchesWon / ps.MatchesPlayed : 0
@@ -65,8 +66,10 @@ public class SeasonController(EloballContext context) : ControllerBase
     [HttpPost(Name = "CreateSeason")]
     public async Task<ActionResult<Season>> Create([FromBody] CreateSeasonDto dto)
     {
-        // Deactivate all current seasons
-        var activeSeasons = await context.Seasons.Where(s => s.IsActive).ToListAsync();
+        // Deactivate the league's current active season(s) only.
+        var activeSeasons = await context.Seasons
+            .Where(s => s.IsActive && s.LeagueId == dto.LeagueId)
+            .ToListAsync();
         foreach (var s in activeSeasons)
         {
             s.IsActive = false;
@@ -78,7 +81,8 @@ public class SeasonController(EloballContext context) : ControllerBase
             Name = dto.Name,
             StartDate = dto.StartDate ?? DateTime.Now,
             IsActive = true,
-            CreatedAt = DateTime.Now
+            CreatedAt = DateTime.Now,
+            LeagueId = dto.LeagueId
         };
 
         context.Seasons.Add(season);
@@ -98,50 +102,14 @@ public class SeasonController(EloballContext context) : ControllerBase
         if (!season.IsActive)
             return BadRequest("Season is already ended");
 
+        // PlayerSeason rows already hold each player's latest rating + stats (maintained
+        // live as matches are played), so ending a season just closes it.
         season.IsActive = false;
         season.EndDate = DateTime.Now;
-
-        // Get all players who played in this season
-        var playersInSeason = await context.PlayerMatches
-            .Include(pm => pm.Match)
-            .Include(pm => pm.Player)
-            .Where(pm => pm.Match.SeasonId == id)
-            .Select(pm => pm.Player)
-            .Distinct()
-            .ToListAsync();
-
-        // Create PlayerSeason entries with stats from matches
-        foreach (var player in playersInSeason)
-        {
-            var matchesPlayed = await context.PlayerMatches
-                .Include(pm => pm.Match)
-                .Where(pm => pm.PlayerId == player.Id && pm.Match.SeasonId == id)
-                .CountAsync();
-
-            // A player won a match when their team is the winning team.
-            // (PlayerWonId holds the winning team id, not a player id.)
-            var matchesWon = await context.PlayerMatches
-                .Include(pm => pm.Match)
-                .Where(pm => pm.PlayerId == player.Id && pm.Match.SeasonId == id && pm.Team == pm.Match.PlayerWonId)
-                .CountAsync();
-
-            context.PlayerSeasons.Add(new PlayerSeason
-            {
-                PlayerId = player.Id,
-                SeasonId = season.Id,
-                StartingElo = 1000,
-                FinalElo = player.Elo,
-                MatchesPlayed = matchesPlayed,
-                MatchesWon = matchesWon
-            });
-
-            player.Elo = 1000; // Reset ELO for new season
-        }
-
         await context.SaveChangesAsync();
 
         return season;
     }
 }
 
-public record CreateSeasonDto(string Name, DateTime? StartDate);
+public record CreateSeasonDto(string Name, int LeagueId, DateTime? StartDate);

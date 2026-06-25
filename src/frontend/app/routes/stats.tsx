@@ -1,7 +1,10 @@
 import { useState, useMemo } from "react";
 import { useSearchParams } from "react-router";
+import { skipToken } from "@reduxjs/toolkit/query";
 import { useGetPlayerMatchesQuery, useGetSeasonsQuery } from "../../apis/foosball/foosball";
 import type { PlayerMatchRecord } from "../../apis/foosball/types";
+import { useCurrentLeague } from "~/lib/useCurrentLeague";
+import { CurrentLeagueBadge } from "~/components/CurrentLeagueBadge";
 import { buildMatchesFromRecords, computePlayerStats, classifyRank, PLACEMENT_GAMES, type PlayerStats, type RankStatus } from "~/lib/playerStats";
 import { Gamepad2, Trophy, Swords, Users, Flame, Target, Shield, Heart, TrendingUp, Calendar, Egg } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
@@ -378,8 +381,9 @@ function StatRow({ icon: Icon, iconColor, label, value, sub }: {
 // --- Page ---
 
 export default function Stats() {
-  const { data: allRecords, isLoading: recordsLoading } = useGetPlayerMatchesQuery();
-  const { data: seasons, isLoading: seasonsLoading } = useGetSeasonsQuery();
+  const leagueId = useCurrentLeague();
+  const { data: allRecords, isLoading: recordsLoading } = useGetPlayerMatchesQuery(leagueId ?? skipToken);
+  const { data: seasons, isLoading: seasonsLoading } = useGetSeasonsQuery(leagueId ?? skipToken);
   const [searchParams, setSearchParams] = useSearchParams();
 
   const playerIdFromUrl = searchParams.get("player") ? Number(searchParams.get("player")) : null;
@@ -480,10 +484,7 @@ export default function Stats() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
-      <div className="text-center mb-6">
-        <h1 className="text-2xl font-extrabold mb-1">Statistics</h1>
-        <p className="text-sm text-muted-foreground">All-time stats and records</p>
-      </div>
+      <CurrentLeagueBadge />
 
       {seasons && seasons.length > 0 && (
         <div className="flex gap-1.5 overflow-x-auto pb-2 mb-6 scrollbar-hide">

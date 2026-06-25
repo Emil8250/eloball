@@ -9,8 +9,6 @@ public partial class Player
 
     public string Name { get; set; } = null!;
 
-    public int Elo { get; set; }
-
     public DateTime CreatedDateTime { get; set; }
 
     public DateTime UpdatedDateTime { get; set; }

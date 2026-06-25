@@ -7,6 +7,7 @@ import {
     Check,
     Clock,
     Crown,
+    Dices,
     Gamepad2,
     Loader2,
     LogOut,
@@ -42,6 +43,7 @@ import type { MyLeague } from "../../apis/foosball/types";
 import { setCurrentLeague } from "~/leagueSlice";
 import { useCurrentLeague } from "~/lib/useCurrentLeague";
 import { CurrentLeagueBadge } from "~/components/CurrentLeagueBadge";
+import { randomLeagueName } from "~/lib/leagueName";
 import { Button } from "~/components/ui/button";
 import {
     Dialog,
@@ -431,9 +433,11 @@ export default function Profile() {
                                                         <Crown size={13} /> Claim ownership
                                                     </Button>
                                                 )}
-                                                <Button size="sm" variant="outline" className="cursor-pointer hover:bg-destructive hover:text-white hover:border-destructive ml-auto" onClick={() => setLeaveTarget(league)}>
-                                                    Leave
-                                                </Button>
+                                                {!isOwner && (
+                                                    <Button size="sm" variant="outline" className="cursor-pointer hover:bg-destructive hover:text-white hover:border-destructive ml-auto" onClick={() => setLeaveTarget(league)}>
+                                                        Leave
+                                                    </Button>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
@@ -446,7 +450,7 @@ export default function Profile() {
                         <Button variant="outline" size="sm" className="cursor-pointer" onClick={() => setFindOpen(true)}>
                             <Plus size={14} /> Find a league
                         </Button>
-                        <Button variant="outline" size="sm" className="cursor-pointer" onClick={() => { setNewLeagueName(""); setCreateOpen(true); }}>
+                        <Button variant="outline" size="sm" className="cursor-pointer" onClick={() => { setNewLeagueName(randomLeagueName()); setCreateOpen(true); }}>
                             <Shield size={14} /> Create league
                         </Button>
                     </div>
@@ -495,14 +499,24 @@ export default function Profile() {
                         <DialogTitle>Create a league</DialogTitle>
                         <DialogDescription>You'll be the owner. You can rename or delete it later.</DialogDescription>
                     </DialogHeader>
-                    <input
-                        value={newLeagueName}
-                        onChange={(e) => setNewLeagueName(e.target.value)}
-                        onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleCreate(); } }}
-                        autoFocus
-                        placeholder="League name"
-                        className="w-full px-3 py-2.5 rounded-xl bg-background border border-border text-sm outline-none focus:border-primary"
-                    />
+                    <div className="relative">
+                        <input
+                            value={newLeagueName}
+                            onChange={(e) => setNewLeagueName(e.target.value)}
+                            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleCreate(); } }}
+                            autoFocus
+                            placeholder="League name"
+                            className="w-full pl-3 pr-11 py-2.5 rounded-xl bg-background border border-border text-sm outline-none focus:border-primary"
+                        />
+                        <button
+                            type="button"
+                            onClick={() => setNewLeagueName(randomLeagueName())}
+                            title="Surprise me"
+                            className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+                        >
+                            <Dices size={18} />
+                        </button>
+                    </div>
                     <DialogFooter>
                         <Button variant="outline" className="cursor-pointer" onClick={() => setCreateOpen(false)}>Cancel</Button>
                         <Button className="cursor-pointer" disabled={!newLeagueName.trim() || creating} onClick={handleCreate}>

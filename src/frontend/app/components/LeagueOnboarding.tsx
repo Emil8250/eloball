@@ -2,13 +2,14 @@ import { useMemo, useState } from "react";
 import { useAuth0 } from "@auth0/auth0-react";
 import { useDispatch } from "react-redux";
 import { toast } from "~/lib/toast";
-import { Loader2, LogOut, Search, Shield, UserPlus, Users } from "lucide-react";
+import { Dices, Loader2, LogOut, Search, Shield, UserPlus, Users } from "lucide-react";
 import {
     useGetLeaguesQuery,
     useJoinLeagueMutation,
     useCreateLeagueMutation,
 } from "../../apis/foosball/foosball";
 import { setCurrentLeague } from "~/leagueSlice";
+import { randomLeagueName } from "~/lib/leagueName";
 import { Button } from "~/components/ui/button";
 
 export function LeagueOnboarding() {
@@ -122,7 +123,7 @@ export function LeagueOnboarding() {
 
                         <button
                             type="button"
-                            onClick={() => setShowCreate(true)}
+                            onClick={() => { if (!newName.trim()) setNewName(randomLeagueName()); setShowCreate(true); }}
                             className="text-sm text-muted-foreground hover:text-foreground transition-colors cursor-pointer inline-flex items-center justify-center gap-1.5"
                         >
                             <UserPlus size={14} />
@@ -132,13 +133,23 @@ export function LeagueOnboarding() {
                 ) : (
                     <div className="flex flex-col gap-3">
                         <label className="text-sm font-semibold">League name</label>
-                        <input
-                            value={newName}
-                            onChange={(e) => setNewName(e.target.value)}
-                            placeholder="e.g. The Foundry - CCD"
-                            autoFocus
-                            className="w-full px-3 py-2.5 rounded-xl bg-background border border-border text-sm outline-none focus:border-primary"
-                        />
+                        <div className="relative">
+                            <input
+                                value={newName}
+                                onChange={(e) => setNewName(e.target.value)}
+                                placeholder="e.g. The Foundry - CCD"
+                                autoFocus
+                                className="w-full pl-3 pr-11 py-2.5 rounded-xl bg-background border border-border text-sm outline-none focus:border-primary"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setNewName(randomLeagueName())}
+                                title="Surprise me"
+                                className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
+                            >
+                                <Dices size={18} />
+                            </button>
+                        </div>
                         <Button className="w-full cursor-pointer" disabled={!newName.trim() || busy} onClick={handleCreate}>
                             {creating && <Loader2 size={16} className="animate-spin" />}
                             Create league

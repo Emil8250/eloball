@@ -149,9 +149,8 @@ public class LeagueController(EloballContext context) : ControllerBase
         var membership = await Membership(id, playerId.Value);
         if (membership == null) return NotFound();
 
-        if (membership.Role == Owner &&
-            await context.LeagueMemberships.AnyAsync(m => m.LeagueId == id && m.PlayerId != playerId))
-            return BadRequest("Delegate ownership or remove the other members before leaving.");
+        if (membership.Role == Owner)
+            return BadRequest("Owners can't leave. Delegate ownership, or remove all members and delete the league.");
 
         context.LeagueMemberships.Remove(membership);
         await context.SaveChangesAsync();

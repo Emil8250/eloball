@@ -1,7 +1,7 @@
 import { skipToken } from "@reduxjs/toolkit/query";
 import { useGetSeasonsQuery, useGetSeasonLeaderboardQuery, useGetActiveSeasonQuery, useGetPlayerMatchesQuery, useEndSeasonMutation, useCreateSeasonMutation } from "../../apis/foosball/foosball";
 import { Link } from "react-router";
-import { Calendar, Crown, Trophy, ChevronRight, Gamepad2, TrendingUp } from "lucide-react";
+import { Calendar, Crown, Trophy, ChevronRight, Dices, Gamepad2, TrendingUp } from "lucide-react";
 import type { Season } from "../../apis/foosball/types";
 import { computePlayerStats, classifyRank, type RankStatus } from "~/lib/playerStats";
 import { useCurrentLeague } from "~/lib/useCurrentLeague";
@@ -365,15 +365,26 @@ export default function Seasons() {
           </DialogHeader>
           <div className="py-4">
             <label className="text-sm font-semibold text-muted-foreground block mb-2">New Season Name</label>
-            <input
-              type="text"
-              value={newName}
-              onChange={(e) => setNewName(e.target.value)}
-              placeholder="e.g. Shadow Protocol"
-              className="w-full rounded-xl border border-border bg-background px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-              disabled={submitting}
-              autoFocus
-            />
+            <div className="relative">
+              <input
+                type="text"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder="e.g. Shadow Protocol"
+                className="w-full rounded-xl border border-border bg-background pl-4 pr-12 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                disabled={submitting}
+                autoFocus
+              />
+              <button
+                type="button"
+                onClick={() => setNewName(generateSeasonName())}
+                title="Surprise me"
+                disabled={submitting}
+                className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer disabled:opacity-40"
+              >
+                <Dices size={18} />
+              </button>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setDialogOpen(false)} disabled={submitting}>

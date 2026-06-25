@@ -118,9 +118,11 @@ public class SeasonController(EloballContext context) : ControllerBase
                 .Where(pm => pm.PlayerId == player.Id && pm.Match.SeasonId == id)
                 .CountAsync();
 
+            // A player won a match when their team is the winning team.
+            // (PlayerWonId holds the winning team id, not a player id.)
             var matchesWon = await context.PlayerMatches
                 .Include(pm => pm.Match)
-                .Where(pm => pm.PlayerId == player.Id && pm.Match.SeasonId == id && pm.Match.PlayerWonId == player.Id)
+                .Where(pm => pm.PlayerId == player.Id && pm.Match.SeasonId == id && pm.Team == pm.Match.PlayerWonId)
                 .CountAsync();
 
             context.PlayerSeasons.Add(new PlayerSeason

@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { useSearchParams } from "react-router";
 import { useGetPlayerMatchesQuery, useGetSeasonsQuery } from "../../apis/foosball/foosball";
 import type { PlayerMatchRecord } from "../../apis/foosball/types";
-import { buildMatchesFromRecords, computePlayerStats, type PlayerStats } from "~/lib/playerStats";
+import { buildMatchesFromRecords, computePlayerStats, classifyRank, PLACEMENT_GAMES, type PlayerStats, type RankStatus } from "~/lib/playerStats";
 import { Gamepad2, Trophy, Swords, Users, Flame, Target, Shield, Heart, TrendingUp, Calendar, Egg } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 
@@ -97,6 +97,35 @@ function computeWinRateProgression(records: PlayerMatchRecord[], playerId: numbe
   return data;
 }
 
+interface RecentMatch {
+  matchId: number;
+  date: string;
+  won: boolean;
+  egg: boolean;
+  teammates: string[];
+  opponents: string[];
+}
+
+function computeRecentMatches(records: PlayerMatchRecord[], playerId: number, seasonId?: number, limit = 10): RecentMatch[] {
+  const matches = buildMatchesFromRecords(records, seasonId);
+  const result: RecentMatch[] = [];
+  for (const pms of matches) {
+    const me = pms.find(p => p.playerId === playerId);
+    if (!me) continue;
+    result.push({
+      matchId: me.matchId,
+      date: me.match.createdDateTime,
+      won: me.team === me.match.playerWonId,
+      egg: me.match.egg,
+      teammates: pms.filter(p => p.team === me.team && p.playerId !== playerId).map(p => p.player.name),
+      opponents: pms.filter(p => p.team !== me.team).map(p => p.player.name),
+    });
+  }
+  return result
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+    .slice(0, limit);
+}
+
 // --- Components ---
 
 function HighlightCard({ icon: Icon, label, value, sub, color, delay }: {
@@ -126,7 +155,17 @@ function HighlightCard({ icon: Icon, label, value, sub, color, delay }: {
 
 const DAY_NAMES = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
-function PlayerDetail({ stats, winRateData }: { stats: PlayerStats; winRateData: { match: number; wr: number }[] }) {
+function RankBadge({ status, matches }: { status: RankStatus; matches: number }) {
+  if (status === "active") {
+    return <span className="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase bg-emerald-500/15 text-emerald-500">Active</span>;
+  }
+  if (status === "inactive") {
+    return <span className="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase bg-muted text-muted-foreground">💤 Inactive</span>;
+  }
+  return <span className="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase bg-blue-500/15 text-blue-500">Calibrating {matches}/{PLACEMENT_GAMES}</span>;
+}
+
+function PlayerDetail({ stats, winRateData, status, recentMatches }: { stats: PlayerStats; winRateData: { match: number; wr: number }[]; status?: RankStatus | null; recentMatches: RecentMatch[] }) {
   const favoriteTeammate = Object.entries(stats.teammates)
     .sort((a, b) => b[1].games - a[1].games)[0];
   const bestTeammate = Object.entries(stats.teammates)
@@ -149,7 +188,10 @@ function PlayerDetail({ stats, winRateData }: { stats: PlayerStats; winRateData:
   return (
     <div className="bg-card rounded-2xl border border-border/50 overflow-hidden animate-slide-up">
       <div className="px-4 py-3 border-b border-border/50">
-        <h3 className="font-extrabold text-lg">{stats.name}</h3>
+        <div className="flex items-center gap-2">
+          <h3 className="font-extrabold text-lg">{stats.name}</h3>
+          {status && <RankBadge status={status} matches={stats.matches} />}
+        </div>
         <p className="text-sm text-muted-foreground">
           {stats.wins}W / {stats.losses}L
           <span className="mx-1.5">&middot;</span>
@@ -280,6 +322,35 @@ function PlayerDetail({ stats, winRateData }: { stats: PlayerStats; winRateData:
             </div>
           </div>
         )}
+        {recentMatches.length > 0 && (
+          <div className="px-4 py-3">
+            <div className="flex items-center gap-2 mb-2">
+              <Gamepad2 size={14} className="text-primary" />
+              <span className="text-xs font-bold text-muted-foreground uppercase tracking-wide">Recent Matches</span>
+            </div>
+            <div className="space-y-1.5">
+              {recentMatches.map(m => (
+                <div key={m.matchId} className="flex items-center gap-2 text-sm">
+                  <span className={`text-[10px] font-bold w-5 text-center rounded ${m.won ? "text-emerald-500" : "text-red-400"}`}>
+                    {m.won ? "W" : "L"}
+                  </span>
+                  <div className="flex-1 min-w-0">
+                    <p className="truncate">
+                      {m.teammates.length > 0 && (
+                        <span className="text-muted-foreground">w/ {m.teammates.join(" & ")} </span>
+                      )}
+                      <span className="text-muted-foreground">vs</span> {m.opponents.join(" & ")}
+                      {m.egg && <span className="ml-1" title="Egg — 10-0 shutout">🥚</span>}
+                    </p>
+                  </div>
+                  <span className="text-xs text-muted-foreground shrink-0 tabular-nums">
+                    {new Date(m.date).toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -368,6 +439,24 @@ export default function Stats() {
       : [],
     [allRecords, activePlayerId, seasonFilter]
   );
+
+  const recentMatches = useMemo(
+    () => allRecords && activePlayerId
+      ? computeRecentMatches(allRecords, activePlayerId, seasonFilter ?? undefined)
+      : [],
+    [allRecords, activePlayerId, seasonFilter]
+  );
+
+  // Rank status only applies within a single season (not "All Time").
+  const selectedSeason = seasonFilter != null ? seasons?.find(s => s.id === seasonFilter) : undefined;
+  const playerStatus: RankStatus | null = activePlayerStats && selectedSeason
+    ? classifyRank(
+        activePlayerStats,
+        selectedSeason.isActive
+          ? Date.now()
+          : selectedSeason.endDate ? new Date(selectedSeason.endDate).getTime() : Date.now()
+      )
+    : null;
 
   function updateParams(playerId: number | null, seasonId: number | null) {
     setSelectedPlayer(playerId);
@@ -495,7 +584,7 @@ export default function Stats() {
           ))}
         </div>
         {activePlayerStats ? (
-          <PlayerDetail stats={activePlayerStats} winRateData={winRateData} />
+          <PlayerDetail stats={activePlayerStats} winRateData={winRateData} status={playerStatus} recentMatches={recentMatches} />
         ) : (
           <div className="text-center py-8 text-muted-foreground">
             <Users size={32} className="mx-auto mb-2 opacity-50" />

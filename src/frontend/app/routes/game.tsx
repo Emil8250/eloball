@@ -4,7 +4,7 @@ import usePlayerContext from "~/context/PlayerContext/usePlayerContext";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "~/lib/toast";
 import { Button } from "~/components/ui/button";
-import { ArrowLeftRight, Scale, X, Gamepad2, Trophy, Egg } from "lucide-react";
+import { ArrowLeftRight, Scale, X, Gamepad2, Trophy, Egg, Play } from "lucide-react";
 import {useAuth0} from "@auth0/auth0-react";
 
 export function meta() {
@@ -32,12 +32,14 @@ export default function Game() {
   const { players: selected, addPlayer, removePlayer } = usePlayerContext();
   const [postMatch, { isLoading: submitting, isSuccess }] = usePostMatchMutation();
   const [isEgg, setIsEgg] = useState(false);
+  const [started, setStarted] = useState(false);
 
   useEffect(() => {
     if (isSuccess) {
       toast.success(isEgg ? "🥚 Egg recorded! 10-0 — brutal." : "Match recorded! ELO updated.");
       selected.forEach(p => removePlayer(p.player.id));
       setIsEgg(false);
+      setStarted(false);
     }
   }, [isSuccess]);
 
@@ -100,6 +102,15 @@ export default function Game() {
     updated.forEach(p => addPlayer(p));
   }, [selected, removePlayer, addPlayer]);
 
+  const handleStart = () => {
+    if (canSubmit) setStarted(true);
+  };
+
+  const handleCancel = () => {
+    setStarted(false);
+    setIsEgg(false);
+  };
+
   const handleSubmit = (teamWonId: number) => {
     const matches: Match[] = selected.map(p => ({
       playerId: p.player.id,
@@ -156,9 +167,11 @@ export default function Game() {
                             {p.player.elo}
                           </span>
                         </div>
-                        <button onClick={() => removePlayer(p.player.id)} className="text-white/40 hover:text-white p-1">
-                          <X size={14} />
-                        </button>
+                        {!started && (
+                          <button onClick={() => removePlayer(p.player.id)} className="text-white/40 hover:text-white p-1">
+                            <X size={14} />
+                          </button>
+                        )}
                       </div>
                     ) : (
                       <span className="text-xs text-white/25 mx-auto">Player {slot + 1}</span>
@@ -189,9 +202,11 @@ export default function Game() {
                             {p.player.elo}
                           </span>
                         </div>
-                        <button onClick={() => removePlayer(p.player.id)} className="text-white/40 hover:text-white p-1">
-                          <X size={14} />
-                        </button>
+                        {!started && (
+                          <button onClick={() => removePlayer(p.player.id)} className="text-white/40 hover:text-white p-1">
+                            <X size={14} />
+                          </button>
+                        )}
                       </div>
                     ) : (
                       <span className="text-xs text-white/25 mx-auto">Player {slot + 1}</span>
@@ -204,73 +219,105 @@ export default function Game() {
         </div>
 
         {/* Actions inside the field */}
-        <div className="flex gap-2 mt-3 relative">
-          {startingTeam && (
-            <div
-              className={`inline-flex items-center rounded-full px-3 text-xs font-bold backdrop-blur-sm border ${
-                startingTeam === 1
-                  ? "bg-red-500/25 border-red-400/40 text-red-200"
-                  : "bg-blue-500/25 border-blue-400/40 text-blue-200"
-              }`}
+        {started ? (
+          <div className="flex items-center justify-center gap-2 mt-3 relative rounded-xl bg-white/15 backdrop-blur-sm py-2 text-white font-bold text-sm">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            Match in Progress
+          </div>
+        ) : (
+          <div className="flex gap-2 mt-3 relative">
+            {startingTeam && (
+              <div
+                className={`inline-flex items-center rounded-full px-3 text-xs font-bold backdrop-blur-sm border ${
+                  startingTeam === 1
+                    ? "bg-red-500/25 border-red-400/40 text-red-200"
+                    : "bg-blue-500/25 border-blue-400/40 text-blue-200"
+                }`}
+              >
+                {startingTeam === 1 ? "Red starts" : "Blue starts"}
+              </div>
+            )}
+            <Button
+              onClick={calibrateTeams}
+              disabled={!canCalibrate || submitting}
+              className="flex-1 rounded-xl bg-white/15 hover:bg-white/25 text-white font-bold border-0 backdrop-blur-sm"
             >
-              {startingTeam === 1 ? "Red starts" : "Blue starts"}
-            </div>
-          )}
-          <Button
-            onClick={calibrateTeams}
-            disabled={!canCalibrate || submitting}
-            className="flex-1 rounded-xl bg-white/15 hover:bg-white/25 text-white font-bold border-0 backdrop-blur-sm"
-          >
-            <Scale size={16} className="mr-1.5" />
-            Calibrate
-          </Button>
-          <Button
-            onClick={swapTeams}
-            disabled={selected.length < 2 || submitting}
-            className="rounded-xl bg-white/15 hover:bg-white/25 text-white border-0 backdrop-blur-sm"
-          >
-            <ArrowLeftRight size={16} />
-          </Button>
-        </div>
+              <Scale size={16} className="mr-1.5" />
+              Calibrate
+            </Button>
+            <Button
+              onClick={swapTeams}
+              disabled={selected.length < 2 || submitting}
+              className="rounded-xl bg-white/15 hover:bg-white/25 text-white border-0 backdrop-blur-sm"
+            >
+              <ArrowLeftRight size={16} />
+            </Button>
+          </div>
+        )}
       </div>
 
-      {/* Egg toggle — flag a 10-0 shutout */}
-      <button
-        type="button"
-        onClick={() => setIsEgg(v => !v)}
-        disabled={submitting}
-        aria-pressed={isEgg}
-        className={`w-full flex items-center justify-center gap-2 rounded-2xl py-3 mb-3 text-sm font-extrabold border-2 transition-all active:scale-95 cursor-pointer ${
-          isEgg
-            ? "bg-amber-400 border-amber-500 text-amber-950 shadow-md shadow-amber-400/30"
-            : "bg-card border-border text-muted-foreground hover:border-amber-400/50"
-        }`}
-      >
-        <Egg size={18} className={isEgg ? "text-amber-950" : "text-amber-500"} />
-        {isEgg ? "Egg! 10–0 shutout" : "Mark as Egg (10–0)"}
-      </button>
+      {started ? (
+        <>
+          {/* Egg toggle — flag a 10-0 shutout */}
+          <button
+            type="button"
+            onClick={() => setIsEgg(v => !v)}
+            disabled={submitting}
+            aria-pressed={isEgg}
+            className={`w-full flex items-center justify-center gap-2 rounded-2xl py-3 mb-3 text-sm font-extrabold border-2 transition-all active:scale-95 cursor-pointer ${
+              isEgg
+                ? "bg-amber-400 border-amber-500 text-amber-950 shadow-md shadow-amber-400/30"
+                : "bg-card border-border text-muted-foreground hover:border-amber-400/50"
+            }`}
+          >
+            <Egg size={18} className={isEgg ? "text-amber-950" : "text-amber-500"} />
+            {isEgg ? "Egg! 10–0 shutout" : "Mark as Egg (10–0)"}
+          </button>
 
-      {/* Post Match — Red Won / Blue Won */}
-      <div className="grid grid-cols-2 gap-3 mb-8">
+          {/* Post Match — Red Won / Blue Won */}
+          <div className="grid grid-cols-2 gap-3 mb-3">
+            <Button
+              onClick={() => handleSubmit(1)}
+              disabled={!canSubmit || submitting}
+              className="rounded-2xl py-5 text-base font-extrabold bg-red-600 hover:bg-red-700 text-white shadow-md shadow-red-600/20 transition-all active:scale-95"
+            >
+              <Trophy size={18} className="mr-2" />
+              Red Won
+            </Button>
+            <Button
+              onClick={() => handleSubmit(2)}
+              disabled={!canSubmit || submitting}
+              className="rounded-2xl py-5 text-base font-extrabold bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-600/20 transition-all active:scale-95"
+            >
+              <Trophy size={18} className="mr-2" />
+              Blue Won
+            </Button>
+          </div>
+
+          {/* Cancel Match — return to setup */}
+          <button
+            type="button"
+            onClick={handleCancel}
+            disabled={submitting}
+            className="w-full rounded-2xl py-3 mb-8 text-sm font-bold text-muted-foreground border border-border hover:bg-muted/50 transition-all active:scale-95 cursor-pointer disabled:opacity-50"
+          >
+            Cancel Match
+          </button>
+        </>
+      ) : (
+        /* Start Match — begin playing */
         <Button
-          onClick={() => handleSubmit(1)}
-          disabled={!canSubmit || submitting}
-          className="rounded-2xl py-5 text-base font-extrabold bg-red-600 hover:bg-red-700 text-white shadow-md shadow-red-600/20 transition-all active:scale-95"
+          onClick={handleStart}
+          disabled={!canSubmit}
+          className="w-full rounded-2xl py-5 mb-8 text-base font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/20 transition-all active:scale-95"
         >
-          <Trophy size={18} className="mr-2" />
-          Red Won
+          <Play size={18} className="mr-2" />
+          Start Match
         </Button>
-        <Button
-          onClick={() => handleSubmit(2)}
-          disabled={!canSubmit || submitting}
-          className="rounded-2xl py-5 text-base font-extrabold bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-600/20 transition-all active:scale-95"
-        >
-          <Trophy size={18} className="mr-2" />
-          Blue Won
-        </Button>
-      </div>
+      )}
 
       {/* Player Selection Grid */}
+      {!started && (
       <div>
         <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wide mb-3">Select Players</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -329,6 +376,7 @@ export default function Game() {
           })}
         </div>
       </div>
+      )}
     </div>
   );
 }

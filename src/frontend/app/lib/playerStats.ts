@@ -1,5 +1,13 @@
 import type { PlayerMatchRecord } from "../../apis/foosball/types";
 
+// CS-style rank inactivity tuning. A player must have played PLACEMENT_GAMES
+// matches in a season to be ranked, and must have played within INACTIVITY_DAYS
+// of the reference point (now, or the season's end) to stay ranked.
+export const PLACEMENT_GAMES = 3;
+export const INACTIVITY_DAYS = 11;
+
+export type RankStatus = "active" | "inactive" | "calibrating";
+
 export interface PlayerStats {
   name: string;
   playerId: number;
@@ -7,12 +15,24 @@ export interface PlayerStats {
   losses: number;
   matches: number;
   winRate: number;
+  lastMatch: number; // epoch ms of the player's most recent match in scope
   eggsGiven: number;
   eggsReceived: number;
   teammates: Record<string, { games: number; wins: number }>;
   opponents: Record<string, { games: number; winsOver: number; lossesTo: number }>;
   streak: { type: "W" | "L"; count: number };
   dayStats: Record<number, { wins: number; total: number }>;
+}
+
+/**
+ * Classify a player for ranking purposes within a season.
+ * `referenceTime` is the point activity is measured against — `Date.now()` for an
+ * active season, or the season's end time for a completed one.
+ */
+export function classifyRank(stats: PlayerStats | undefined, referenceTime: number): RankStatus {
+  if (!stats || stats.matches < PLACEMENT_GAMES) return "calibrating";
+  if (stats.lastMatch < referenceTime - INACTIVITY_DAYS * 86_400_000) return "inactive";
+  return "active";
 }
 
 export function buildMatchesFromRecords(records: PlayerMatchRecord[], seasonId?: number) {
@@ -44,6 +64,7 @@ export function computePlayerStats(records: PlayerMatchRecord[], seasonId?: numb
           losses: 0,
           matches: 0,
           winRate: 0,
+          lastMatch: 0,
           eggsGiven: 0,
           eggsReceived: 0,
           teammates: {},
@@ -55,6 +76,8 @@ export function computePlayerStats(records: PlayerMatchRecord[], seasonId?: numb
       const s = stats.get(pm.playerId)!;
       const won = pm.team === winningTeam;
       s.matches++;
+      // sortedMatches is ascending, so the last write is the most recent match.
+      s.lastMatch = new Date(pm.match.createdDateTime).getTime();
       if (won) s.wins++;
       else s.losses++;
       s.winRate = s.matches > 0 ? s.wins / s.matches : 0;

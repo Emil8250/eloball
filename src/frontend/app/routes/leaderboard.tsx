@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useGetActiveSeasonQuery, useGetSeasonLeaderboardQuery, useGetPlayersQuery, useGetPlayerMatchesQuery } from "../../apis/foosball/foosball";
 import type { LeaderboardEntry } from "../../apis/foosball/types";
+import { computePlayerStats, classifyRank, PLACEMENT_GAMES } from "~/lib/playerStats";
 import { Link } from "react-router";
 import { Swords, TrendingUp, Trophy, Gamepad2 } from "lucide-react";
 
@@ -51,28 +52,48 @@ export default function Leaderboard() {
   const [seasonNameClickCount, setSeasonNameClickCount] = useState(0);
   const isLoading = seasonLoading || playersLoading || lbLoading;
 
-  // For active season, build leaderboard from players who have matches this season
-  const leaderboard: LeaderboardEntry[] | undefined = season?.isActive && players
-    ? (() => {
-        if (!allPlayerMatches) return [];
-        const seasonMatches = allPlayerMatches.filter(pm => pm.match.seasonId === season.id);
-        const playersWithMatches = new Set<number>();
-        for (const pm of seasonMatches) {
-          playersWithMatches.add(pm.playerId);
-        }
-        return [...players]
-          .filter(p => playersWithMatches.has(p.id))
-          .sort((a, b) => b.elo - a.elo)
-          .map(p => ({
-            playerId: p.id,
-            playerName: p.name,
-            startingElo: 1000,
-            finalElo: p.elo,
-            matchesPlayed: 0,
-            matchesWon: 0,
-            winRate: 0,
-          }));
-      })()
+  // For the active season, partition players (who have played this season) into
+  // ranked / inactive / calibrating, CS-style — purely a display split, ratings untouched.
+  const byElo = (a: LeaderboardEntry, b: LeaderboardEntry) =>
+    (b.finalElo ?? 0) - (a.finalElo ?? 0);
+  const { activeLeaderboard, inactiveLeaderboard, calibrating } = (() => {
+    const empty = {
+      activeLeaderboard: [] as LeaderboardEntry[],
+      inactiveLeaderboard: [] as LeaderboardEntry[],
+      calibrating: [] as LeaderboardEntry[],
+    };
+    if (!season?.isActive || !players || !allPlayerMatches) return empty;
+
+    const stats = computePlayerStats(allPlayerMatches, season.id);
+    const eloById = new Map(players.map(p => [p.id, p.elo]));
+    const now = Date.now();
+    const calibrating: LeaderboardEntry[] = [];
+    const inactiveLeaderboard: LeaderboardEntry[] = [];
+    const activeLeaderboard: LeaderboardEntry[] = [];
+    for (const s of stats.values()) {
+      const entry: LeaderboardEntry = {
+        playerId: s.playerId,
+        playerName: s.name,
+        startingElo: 1000,
+        finalElo: eloById.get(s.playerId) ?? null,
+        matchesPlayed: s.matches,
+        matchesWon: s.wins,
+        winRate: s.winRate,
+      };
+      const status = classifyRank(s, now);
+      if (status === "calibrating") calibrating.push(entry);
+      else if (status === "inactive") inactiveLeaderboard.push(entry);
+      else activeLeaderboard.push(entry);
+    }
+    calibrating.sort(byElo);
+    inactiveLeaderboard.sort(byElo);
+    activeLeaderboard.sort(byElo);
+    return { activeLeaderboard, inactiveLeaderboard, calibrating };
+  })();
+
+  // Active season → ranked list only; ended season → backend leaderboard as-is.
+  const leaderboard: LeaderboardEntry[] | undefined = season?.isActive
+    ? activeLeaderboard
     : seasonLeaderboard;
 
   if (isLoading) {
@@ -144,9 +165,11 @@ export default function Leaderboard() {
     return map;
   })();
 
-  const matchCount = season.isActive
-    ? Math.floor((season as any).matches?.length ?? 0)
-    : Math.floor((leaderboard?.reduce((sum, e) => sum + e.matchesPlayed, 0) ?? 0) / 2);
+  const matchCount = new Set(
+    (allPlayerMatches ?? [])
+      .filter(pm => pm.match.seasonId === season.id)
+      .map(pm => pm.matchId)
+  ).size;
   const startDate = new Date(season.startDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 
 const isEasterEggActive = seasonNameClickCount >= 10;
@@ -265,10 +288,15 @@ const handleSeasonNameClick = () => {
         </div>
       )}
 
-      {/* Rest of leaderboard */}
-      {leaderboard && leaderboard.length > 3 && (
+      {/* Rest of leaderboard — below the podium, or all ranked players when there's no full podium */}
+      {leaderboard && leaderboard.length > 0 && (() => {
+        const hasPodium = leaderboard.length >= 3;
+        const rest = hasPodium ? leaderboard.slice(3) : leaderboard;
+        const baseRank = hasPodium ? 4 : 1;
+        if (rest.length === 0) return null;
+        return (
         <div className="space-y-2">
-          {leaderboard.slice(3).map((entry, i) => (
+          {rest.map((entry, i) => (
             <Link
               to={`/stats?player=${entry.playerId}${season ? `&season=${season.id}` : ""}`}
               key={entry.playerId}
@@ -276,7 +304,7 @@ const handleSeasonNameClick = () => {
               style={{ animationDelay: `${(i + 3) * 60}ms` }}
             >
               <span className="text-sm font-bold text-muted-foreground w-6 text-center tabular-nums">
-                {i + 4}
+                {baseRank + i}
               </span>
               <div className="flex-1 min-w-0">
                 <p className="font-bold truncate flex items-center gap-1.5">
@@ -293,15 +321,92 @@ const handleSeasonNameClick = () => {
                 )}
               </div>
               <div className="text-right">
-                <p className="text-lg font-extrabold tabular-nums"><EloValue value={entry.finalElo ?? entry.startingElo} enabled={isEasterEggActive} /></p>                
+                <p className="text-lg font-extrabold tabular-nums"><EloValue value={entry.finalElo ?? entry.startingElo} enabled={isEasterEggActive} /></p>
               </div>
             </Link>
           ))}
         </div>
+        );
+      })()}
+
+      {/* Calibrating — not yet ranked (placement matches) */}
+      {calibrating.length > 0 && (
+        <div className="mt-6">
+          <div className="px-1 mb-3">
+            <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wide">Calibrating</h2>
+          </div>
+          <div className="space-y-2">
+            {calibrating.map((entry, i) => (
+              <Link
+                to={`/stats?player=${entry.playerId}${season ? `&season=${season.id}` : ""}`}
+                key={entry.playerId}
+                className="flex items-center gap-4 bg-card rounded-xl px-4 py-3 border border-border/50 opacity-70 animate-slide-up hover:border-primary/30 transition-colors cursor-pointer"
+                style={{ animationDelay: `${i * 60}ms` }}
+              >
+                <span className="text-[11px] font-bold text-muted-foreground w-8 text-center tabular-nums shrink-0">
+                  {entry.matchesPlayed}/{PLACEMENT_GAMES}
+                </span>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold truncate flex items-center gap-1.5">
+                    <span className="truncate">{entry.playerName}</span>
+                    {(eggsByPlayer.get(entry.playerId) ?? 0) > 0 && (
+                      <span className="text-xs font-bold shrink-0" title="Eggs delivered (10-0)">🥚 {eggsByPlayer.get(entry.playerId)}</span>
+                    )}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {entry.matchesWon}W / {entry.matchesPlayed - entry.matchesWon}L
+                    <span className="ml-2">{PLACEMENT_GAMES - entry.matchesPlayed} more to rank</span>
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-lg font-extrabold tabular-nums text-muted-foreground">{entry.finalElo ?? entry.startingElo}</p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Inactive — ranked players who haven't played recently; rating parked */}
+      {inactiveLeaderboard.length > 0 && (
+        <div className="mt-6">
+          <div className="px-1 mb-3">
+            <h2 className="text-sm font-bold text-muted-foreground uppercase tracking-wide">Inactive — play to rejoin</h2>
+          </div>
+          <div className="space-y-2">
+            {inactiveLeaderboard.map((entry, i) => (
+              <Link
+                to={`/stats?player=${entry.playerId}${season ? `&season=${season.id}` : ""}`}
+                key={entry.playerId}
+                className="flex items-center gap-4 bg-card rounded-xl px-4 py-3 border border-border/50 opacity-60 animate-slide-up hover:border-primary/30 transition-colors cursor-pointer"
+                style={{ animationDelay: `${i * 60}ms` }}
+              >
+                <span className="w-6 text-center shrink-0" title="Inactive">💤</span>
+                <div className="flex-1 min-w-0">
+                  <p className="font-bold truncate flex items-center gap-1.5">
+                    <span className="truncate">{entry.playerName}</span>
+                    {(eggsByPlayer.get(entry.playerId) ?? 0) > 0 && (
+                      <span className="text-xs font-bold shrink-0" title="Eggs delivered (10-0)">🥚 {eggsByPlayer.get(entry.playerId)}</span>
+                    )}
+                  </p>
+                  {entry.matchesPlayed > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      {entry.matchesWon}W / {entry.matchesPlayed - entry.matchesWon}L
+                      <span className="ml-2 font-semibold">{Math.round(entry.winRate * 100)}%</span>
+                    </p>
+                  )}
+                </div>
+                <div className="text-right">
+                  <p className="text-lg font-extrabold tabular-nums text-muted-foreground">{entry.finalElo ?? entry.startingElo}</p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
       )}
 
       {/* Empty state */}
-      {leaderboard && leaderboard.length === 0 && (
+      {leaderboard && leaderboard.length === 0 && calibrating.length === 0 && inactiveLeaderboard.length === 0 && (
         <div className="text-center py-12 text-muted-foreground">
           <Gamepad2 size={48} className="mx-auto mb-3 opacity-50" />
           <p className="font-semibold">No matches yet this season</p>
